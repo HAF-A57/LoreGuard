@@ -1,0 +1,245 @@
+# LoreGuard Development Handoff: AI Team Instructions
+
+## System Overview
+
+**LoreGuard** is an automated facts and perspectives harvesting system designed as a companion to MAGE (Multi-Agent Generative Engine). It addresses the critical challenge of collecting and evaluating open-source information at scale for military wargaming operations.
+
+### Core Mission
+- **Automate discovery** of relevant documents from 200+ global sources
+- **Intelligently evaluate** content using AI-powered rubrics for military wargaming relevance
+- **Curate high-value artifacts** (Signal) for distribution to the wargaming community
+- **Provide diverse perspectives** to support roleplay of nation-states and organizations in wargaming scenarios
+
+### Key Capabilities
+- **10,000+ documents/day** processing capacity
+- **100+ languages** supported with multilingual translation
+- **Evidence-based evaluation** with WARC archival for audit compliance
+- **Fully on-premises** deployment with zero cloud dependencies
+- **MAGE integration** for seamless workflow integration
+
+## Development Team Tasks and Roadmap
+
+[1 tool called]
+
+### Phase 1: Documentation Review and Environment Setup (Week 1-2)
+
+#### 🔍 **Priority 1: Documentation Analysis**
+**Task**: Review all planning documentation to understand system requirements
+**Key Documents to Study**:
+1. `LoreGuardExecutiveSummary.md` - Strategic overview and mission
+2. `FinalTechnologyRoadmap.md` - Complete implementation blueprint
+3. `TechArchitecture.md` - Microservices architecture
+4. `EvaluationPipelinePlan.md` - LLM evaluation methodology
+5. All 12 research documents for technology-specific implementation details
+
+**Deliverables**:
+- Team understanding of complete system architecture
+- Identification of any missing requirements or clarifications needed
+- Assignment of team members to specific service areas
+
+#### 🛠️ **Priority 2: Development Environment**
+**Task**: Set up complete development infrastructure
+**Components to Deploy**:
+- Docker Compose with all services (PostgreSQL, MinIO, Redis, Temporal)
+- Development databases with sample data
+- LLM services (LibreTranslate, NLLB, Ollama)
+- Monitoring stack (Prometheus, Grafana)
+
+**Reference**: See `FinalTechnologyRoadmap.md` lines 342-363 for complete setup commands
+
+### Phase 2: Core Foundation (Months 1-2)
+
+#### 🗄️ **Priority 3: Data Layer**
+**Task**: Implement core database schema and object storage
+**Components**:
+- PostgreSQL schema with partitioning strategy
+- pgvector extension for semantic search
+- MinIO integration for artifact storage
+- Redis caching and session management
+
+**Reference**: See `VectorDatabaseResearch.md` and `OnPremisesStorageResearch.md`
+
+#### 🕷️ **Priority 4: Ingestion Pipeline**
+**Task**: Build web crawling and document processing services
+**Components**:
+- Scrapy spiders with politeness controls
+- Playwright integration for JavaScript-heavy sites
+- unstructured.io document processing
+- GROBID for academic papers
+- Tesseract OCR with language packs
+
+**Reference**: See `CrawlerFrameworkResearch.md` and `DocumentProcessingResearch.md`
+
+#### ⚙️ **Priority 5: Workflow Orchestration**
+**Task**: Implement Temporal workflows for pipeline coordination
+**Components**:
+- Document processing workflows
+- Error handling and retry logic
+- Job scheduling and monitoring
+- Integration with Celery for simple tasks
+
+**Reference**: See `WorkflowOrchestrationResearch.md` for detailed implementation
+
+### Phase 3: Evaluation Pipeline (Months 2-3)
+
+#### 🧠 **Priority 6: LLM Evaluation Service**
+**Task**: Build AI-powered document evaluation system
+**Components**:
+- OpenAI-compatible LLM integration
+- Pydantic validation for structured outputs
+- Configurable rubric system
+- Evidence collection with WARC archival
+
+**Reference**: See `JSONValidationResearch.md` and `EvaluationPipelinePlan.md`
+
+#### 🌍 **Priority 7: Multilingual Processing**
+**Task**: Implement translation and language support
+**Components**:
+- polyglot language detection
+- LibreTranslate service integration
+- NLLB and Tower LLM models
+- Tesseract with multilingual OCR
+
+**Reference**: See `MultilingualProcessingResearch.md` for complete implementation
+
+#### 📊 **Priority 8: Human Calibration System**
+**Task**: Build quality assurance and drift detection
+**Components**:
+- Streamlit annotation interface
+- Active learning document selection
+- Inter-rater reliability monitoring
+- Statistical drift detection
+
+**Reference**: See `CalibrationMethodologyResearch.md` for methodology
+
+### Phase 4: User Interface (Months 3-4)
+
+#### 🖥️ **Priority 9: React Frontend**
+**Task**: Build modern, scalable user interface
+**Components**:
+- shadcn/ui component library
+- TanStack Table with virtualization for 100K+ rows
+- Three-pane layout matching MAGE patterns
+- Dark/light theme support
+- Real-time updates via WebSockets
+
+**Reference**: See `UIComponentLibraryResearch.md` and `DataVirtualizationResearch.md`
+
+### Phase 5: Integration and Distribution (Months 4-5)
+
+#### 🔗 **Priority 10: MAGE Integration**
+**Task**: Build seamless integration with MAGE system
+**Components**:
+- Shared LLM provider configuration
+- Library API for Signal document access
+- Common authentication (SAML/LDAP)
+- Vector search integration
+
+**Reference**: See integration sections in `TechArchitecture.md`
+
+#### 📤 **Priority 11: Signal Distribution**
+**Task**: Implement secure document sharing
+**Components**:
+- Nextcloud Enterprise integration
+- SharePoint backup distribution
+- Role-based access controls
+- Automated workflow for Signal promotion
+
+**Reference**: See `EnterpriseFileSharingResearch.md`
+
+### Phase 6: Production Readiness (Months 5-6)
+
+#### 📈 **Priority 12: Performance Optimization**
+**Task**: Scale system for enterprise requirements
+**Components**:
+- Weaviate vector database scaling
+- Distributed crawler deployment
+- Performance monitoring and alerting
+- Load testing with realistic data volumes
+
+#### 🔒 **Priority 13: Security and Compliance**
+**Task**: Validate DoD compliance and security requirements
+**Components**:
+- Security audit and penetration testing
+- SIPR deployment configuration
+- Encryption validation
+- Access control verification
+
+## Implementation Guidelines
+
+### **Technology Stack (Finalized)**
+```yaml
+Backend Services:
+  - FastAPI (API Gateway)
+  - Scrapy + Playwright (Web Crawling)
+  - unstructured.io + GROBID + Tesseract (Document Processing)
+  - LibreTranslate + NLLB + Tower (Translation)
+  - OpenAI + Pydantic (LLM Evaluation)
+  - Temporal + Celery (Workflow Orchestration)
+
+Data Layer:
+  - PostgreSQL + pgvector (Metadata + Vectors)
+  - MinIO (Object Storage)
+  - Redis (Caching + Sessions)
+  - Weaviate (Vector Scaling)
+
+Frontend:
+  - React + TypeScript
+  - shadcn/ui + Radix UI
+  - TanStack Table + Virtual
+  - Next.js Framework
+
+Infrastructure:
+  - Docker + Kubernetes
+  - Prometheus + Grafana (Monitoring)
+  - Nextcloud Enterprise (Distribution)
+```
+
+### **Code Quality Standards**
+- **90%+ test coverage** across all services
+- **Type safety** with TypeScript/Python typing
+- **API documentation** with OpenAPI specs
+- **Security scanning** with automated tools
+- **Performance benchmarks** for all critical paths
+
+### **Development Workflow**
+1. **Start with documentation review** - understand complete system before coding
+2. **Follow microservices architecture** - each service in separate container/repository
+3. **Implement incrementally** - working pipeline before advanced features
+4. **Test continuously** - unit, integration, and performance testing
+5. **Monitor everything** - comprehensive observability from day one
+
+### **Success Criteria**
+- **Functional pipeline** processing 1,000 docs/day by Month 2
+- **Complete evaluation system** with human calibration by Month 3
+- **Scalable UI** handling 100K+ artifacts by Month 4
+- **Enterprise deployment** processing 10,000+ docs/day by Month 6
+
+## Critical Implementation Notes
+
+### **Security Requirements**
+- **No cloud dependencies** - fully on-premises deployment required
+- **DoD compliance** - encryption, audit trails, access controls mandatory
+- **Classification handling** - support for UNCLASSIFIED through SECRET materials
+
+### **Performance Targets**
+- **Throughput**: 10,000+ documents processed daily
+- **Latency**: <1 second search response across millions of documents
+- **UI Performance**: 60fps scrolling with 100K+ row tables
+- **Availability**: 99.5% uptime with <4 hour recovery
+
+### **Integration Points**
+- **MAGE Library**: Direct API integration for Signal document flow
+- **DoD Identity**: SAML/LDAP authentication with existing systems
+- **Sharing Platforms**: Nextcloud + SharePoint for community distribution
+
+**All research complete. Technology stack finalized. Ready for immediate development start.**
+
+The AI development team now has:
+- ✅ **Complete requirements** (18 research documents)
+- ✅ **Detailed architecture** (microservices with implementation examples)
+- ✅ **Technology decisions** (proven, enterprise-grade stack)
+- ✅ **Implementation roadmap** (phased approach with clear milestones)
+- ✅ **Quality standards** (testing, security, performance criteria)
+
+**Begin with Priority 1: Documentation Review, then proceed through the phases systematically.**
