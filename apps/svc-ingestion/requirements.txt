@@ -1,0 +1,59 @@
+# LoreGuard Ingestion Service Dependencies
+# Web crawling and document ingestion
+
+# Core Framework
+scrapy>=2.11.0
+scrapy-playwright>=0.0.25
+playwright>=1.40.0
+
+# HTTP and Web Processing
+requests>=2.31.0
+urllib3>=2.0.0
+lxml>=4.9.0
+beautifulsoup4>=4.12.0
+
+# Database and Storage
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+redis>=5.0.0
+boto3>=1.34.0  # For MinIO S3 compatibility
+
+# Configuration and Environment
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+# Logging and Monitoring
+structlog>=23.2.0
+prometheus-client>=0.19.0
+
+# Content Processing
+chardet>=5.2.0
+python-magic>=0.4.27
+
+# Anti-bot and Stealth
+fake-useragent>=1.4.0
+scrapy-rotating-proxies>=0.6.2
+scrapy-user-agents>=0.1.1
+
+# Job Queue and Scheduling
+celery>=5.3.0
+kombu>=5.3.0
+
+# Utilities
+python-dateutil>=2.8.0
+pytz>=2023.3
+validators>=0.22.0
+
+# Development and Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.12.0
+black>=23.11.0
+flake8>=6.1.0
+mypy>=1.7.0
+
+# Optional: For advanced content analysis
+langdetect>=1.0.9
+newspaper3k>=0.2.8
+
