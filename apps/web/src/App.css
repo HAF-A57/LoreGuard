@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&family=Nunito+Sans:ital,opsz,wght@0,6..12,200;0,6..12,300;0,6..12,400;0,6..12,500;0,6..12,600;0,6..12,700;0,6..12,800;1,6..12,200;1,6..12,300;1,6..12,400;1,6..12,500;1,6..12,600;1,6..12,700;1,6..12,800&family=Source+Code+Pro:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Aulendur LLC Color Scheme */
+  --aulendur-cream: #FFFEFB;
+  --aulendur-sage: #7B949C;
+  --aulendur-steel: #5C798B;
+  --aulendur-navy: #213C4E;
+  --aulendur-midnight: #182241;
+}
+
+:root {
+  --radius: 0.625rem;
+  
+  /* Light theme using Aulendur colors */
+  --background: #FFFEFB;
+  --foreground: #182241;
+  --card: #FFFEFB;
+  --card-foreground: #182241;
+  --popover: #FFFEFB;
+  --popover-foreground: #182241;
+  --primary: #213C4E;
+  --primary-foreground: #FFFEFB;
+  --secondary: #7B949C;
+  --secondary-foreground: #FFFEFB;
+  --muted: #7B949C;
+  --muted-foreground: #213C4E;
+  --accent: #5C798B;
+  --accent-foreground: #FFFEFB;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #7B949C;
+  --input: #7B949C;
+  --ring: #5C798B;
+  --chart-1: #213C4E;
+  --chart-2: #5C798B;
+  --chart-3: #7B949C;
+  --chart-4: #182241;
+  --chart-5: #FFFEFB;
+  --sidebar: #213C4E;
+  --sidebar-foreground: #FFFEFB;
+  --sidebar-primary: #5C798B;
+  --sidebar-primary-foreground: #FFFEFB;
+  --sidebar-accent: #7B949C;
+  --sidebar-accent-foreground: #FFFEFB;
+  --sidebar-border: #5C798B;
+  --sidebar-ring: #7B949C;
+}
+
+.dark {
+  --background: #182241;
+  --foreground: #FFFEFB;
+  --card: #213C4E;
+  --card-foreground: #FFFEFB;
+  --popover: #213C4E;
+  --popover-foreground: #FFFEFB;
+  --primary: #7B949C;
+  --primary-foreground: #182241;
+  --secondary: #5C798B;
+  --secondary-foreground: #FFFEFB;
+  --muted: #5C798B;
+  --muted-foreground: #FFFEFB;
+  --accent: #7B949C;
+  --accent-foreground: #182241;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #5C798B;
+  --input: #5C798B;
+  --ring: #7B949C;
+  --chart-1: #FFFEFB;
+  --chart-2: #7B949C;
+  --chart-3: #5C798B;
+  --chart-4: #213C4E;
+  --chart-5: #182241;
+  --sidebar: #213C4E;
+  --sidebar-foreground: #FFFEFB;
+  --sidebar-primary: #7B949C;
+  --sidebar-primary-foreground: #182241;
+  --sidebar-accent: #5C798B;
+  --sidebar-accent-foreground: #FFFEFB;
+  --sidebar-border: #5C798B;
+  --sidebar-ring: #7B949C;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Nunito Sans', sans-serif;
+  }
+  
+  /* Aulendur Typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 500;
+  }
+  
+  code, pre {
+    font-family: 'Source Code Pro', monospace;
+  }
+}
+
+/* Custom gradient backgrounds for Aulendur aesthetic */
+.aulendur-gradient-header {
+  background: linear-gradient(135deg, #213C4E 0%, #5C798B 50%, #7B949C 100%);
+}
+
+.aulendur-gradient-card {
+  background: linear-gradient(135deg, #FFFEFB 0%, rgba(123, 148, 156, 0.05) 100%);
+  border: 1px solid;
+  border-image: linear-gradient(135deg, #7B949C, #5C798B) 1;
+}
+
+.dark .aulendur-gradient-card {
+  background: linear-gradient(135deg, #213C4E 0%, rgba(92, 121, 139, 0.1) 100%);
+}
+
+/* Hover transformations */
+.aulendur-hover-transform {
+  transition: all 0.3s ease;
+}
+
+.aulendur-hover-transform:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(33, 60, 78, 0.15);
+}
+
+.dark .aulendur-hover-transform:hover {
+  box-shadow: 0 8px 25px rgba(123, 148, 156, 0.2);
+}
