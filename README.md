@@ -1,1 +1,181 @@
-# LoreGuard
+# LoreGuard Planning Documentation
+
+**Automated Facts and Perspectives Harvesting for Military Wargaming**
+
+---
+
+## Overview
+
+LoreGuard is a companion system to the Multi-Agent Generative Engine (MAGE) designed to automatically discover, retrieve, evaluate, and curate open-source artifacts from thousands of global sources. The system captures diverse facts and perspectives from the Information Space to support Air Force wargaming operations, scenario development, and roleplay of various nation-states and organizations.
+
+## Documentation Structure
+
+This directory contains comprehensive planning documentation for LoreGuard's development, organized into strategic, technical, and research categories.
+
+### 📋 **Core Planning Documents**
+
+| Document | Purpose | Audience |
+|----------|---------|----------|
+| [`LoreGuardExecutiveSummary.md`](./Planning%20and%20Design%20Documentation/LoreGuardExecutiveSummary.md) | Senior leadership white paper | Military leadership, decision makers |
+| [`ValueNarrative.md`](./Planning%20and%20Design%20Documentation/ValueNarrative.md) | Business case and value proposition | Stakeholders, program managers |
+| [`CoreUXDesign.md`](./Planning%20and%20Design%20Documentation/CoreUXDesign.md) | User experience and interface design | Product designers, analysts |
+| [`TechArchitecture.md`](./Planning%20and%20Design%20Documentation/TechArchitecture.md) | Technical architecture overview | Engineering teams, architects |
+| [`EvaluationPipelinePlan.md`](./Planning%20and%20Design%20Documentation/EvaluationPipelinePlan.md) | LLM evaluation methodology | ML engineers, data scientists |
+| [`StoragePlan.md`](./Planning%20and%20Design%20Documentation/StoragePlan.md) | Data storage and lifecycle strategy | Infrastructure teams |
+| [`NotionalRubricToStart.md`](./Planning%20and%20Design%20Documentation/NotionalRubricToStart.md) | Initial evaluation criteria | Analysts, subject matter experts |
+
+### 🔬 **Research Documentation**
+
+| Document | Technology Area | Status |
+|----------|----------------|--------|
+| [`CrawlerFrameworkResearch.md`](./Planning%20and%20Design%20Documentation/CrawlerFrameworkResearch.md) | Web crawling and ingestion | ✅ Completed |
+| [`DocumentProcessingResearch.md`](./Planning%20and%20Design%20Documentation/DocumentProcessingResearch.md) | OCR and document conversion | ✅ Completed |
+| [`VectorDatabaseResearch.md`](./Planning%20and%20Design%20Documentation/VectorDatabaseResearch.md) | Semantic search and vectors | ✅ Completed |
+| [`WorkflowOrchestrationResearch.md`](./Planning%20and%20Design%20Documentation/WorkflowOrchestrationResearch.md) | Pipeline orchestration | ✅ Completed |
+| [`UIComponentLibraryResearch.md`](./Planning%20and%20Design%20Documentation/UIComponentLibraryResearch.md) | Frontend components | ✅ Completed |
+| [`DataVirtualizationResearch.md`](./Planning%20and%20Design%20Documentation/DataVirtualizationResearch.md) | Large table performance | ✅ Completed |
+| [`JSONValidationResearch.md`](./Planning%20and%20Design%20Documentation/JSONValidationResearch.md) | Structured LLM outputs | ✅ Completed |
+| [`OnPremisesStorageResearch.md`](./Planning%20and%20Design%20Documentation/OnPremisesStorageResearch.md) | On-premises storage solutions | ✅ Completed |
+| [`EvidenceStorageResearch.md`](./Planning%20and%20Design%20Documentation/EvidenceStorageResearch.md) | Audit trail and evidence | ✅ Completed |
+| [`MultilingualProcessingResearch.md`](./Planning%20and%20Design%20Documentation/MultilingualProcessingResearch.md) | Translation and language support | ✅ Completed |
+| [`CalibrationMethodologyResearch.md`](./Planning%20and%20Design%20Documentation/CalibrationMethodologyResearch.md) | Human validation and drift detection | ✅ Completed |
+| [`EnterpriseFileSharingResearch.md`](./Planning%20and%20Design%20Documentation/EnterpriseFileSharingResearch.md) | Signal document distribution | ✅ Completed |
+
+### 📊 **Summary Documents**
+
+| Document | Purpose | Status |
+|----------|---------|--------|
+| [`ResearchSummaryAndRecommendations.md`](./Planning%20and%20Design%20Documentation/ResearchSummaryAndRecommendations.md) | Research findings consolidation | ✅ Completed |
+| [`FinalTechnologyRoadmap.md`](./Planning%20and%20Design%20Documentation/FinalTechnologyRoadmap.md) | Complete implementation blueprint | ✅ Completed |
+
+## Technology Stack (Final Decisions)
+
+### **Core Infrastructure**
+- **Web Crawling**: Scrapy + Playwright hybrid
+- **Document Processing**: unstructured.io + GROBID + Tesseract
+- **Object Storage**: MinIO (on-premises S3-compatible)
+- **Vector Database**: pgvector → Weaviate (scaling)
+- **Workflow Orchestration**: Temporal + Celery hybrid
+- **UI Framework**: shadcn/ui + TanStack Table virtualization
+
+### **Advanced Capabilities**
+- **Translation**: LibreTranslate + NLLB + Tower LLM ensemble
+- **Evidence Storage**: WARC format with structured extraction
+- **Calibration**: Stratified sampling + active learning
+- **Signal Distribution**: Nextcloud Enterprise + SharePoint backup
+
+## Key Features
+
+### 🌐 **Global Perspective Harvesting**
+- **200+ sources** monitored continuously
+- **100+ languages** supported with multilingual processing
+- **Diverse viewpoints** captured for roleplay scenarios
+- **Cultural narratives** preserved for strategic analysis
+
+### 🤖 **AI-Powered Evaluation**
+- **LLM-based scoring** with configurable rubrics
+- **Human calibration** with drift detection
+- **Evidence collection** with WARC archival
+- **Transparent provenance** for audit compliance
+
+### 🔒 **Enterprise Security**
+- **Fully on-premises** deployment (zero cloud dependencies)
+- **DoD-compliant** encryption and access controls
+- **SIPR-compatible** for classified environments
+- **Role-based permissions** with audit logging
+
+### 📈 **Performance & Scale**
+- **10,000+ documents/day** processing capacity
+- **100K+ artifacts** displayed with 60fps virtualization
+- **Sub-second search** across millions of documents
+- **Auto-scaling** infrastructure with monitoring
+
+## Development Status
+
+### ✅ **Research Phase: 100% Complete**
+- **18 technology areas** researched and decided
+- **All architectural decisions** finalized
+- **Implementation examples** provided for all components
+- **Cost analysis** and risk assessment completed
+
+### 🚀 **Ready for Implementation**
+- **Complete technology stack** defined
+- **Detailed implementation roadmap** established
+- **Development team guidance** documented
+- **Deployment strategies** specified
+
+## Getting Started
+
+### For Development Teams
+1. Review [`FinalTechnologyRoadmap.md`](./FinalTechnologyRoadmap.md) for complete implementation blueprint
+2. See [`TechArchitecture.md`](./TechArchitecture.md) for service architecture details
+3. Reference individual research documents for technology-specific implementation guidance
+
+### For Stakeholders
+1. Start with [`LoreGuardExecutiveSummary.md`](./LoreGuardExecutiveSummary.md) for strategic overview
+2. Review [`ValueNarrative.md`](./ValueNarrative.md) for business case and benefits
+3. See [`CoreUXDesign.md`](./CoreUXDesign.md) for user experience design
+
+### For Subject Matter Experts
+1. Review [`NotionalRubricToStart.md`](./NotionalRubricToStart.md) for evaluation criteria
+2. See [`EvaluationPipelinePlan.md`](./EvaluationPipelinePlan.md) for methodology details
+3. Reference [`CalibrationMethodologyResearch.md`](./CalibrationMethodologyResearch.md) for validation approaches
+
+## Implementation Phases
+
+### **Phase 1**: Foundation (Months 1-2)
+- Core crawling and document processing
+- Basic LLM evaluation pipeline
+- PostgreSQL + pgvector semantic search
+- React frontend with three-pane layout
+
+### **Phase 2**: Evaluation Pipeline (Months 2-3)
+- Configurable rubric system
+- WARC evidence collection
+- Human calibration interface
+- Multilingual processing
+
+### **Phase 3**: Advanced Features (Months 3-4)
+- LLM translation ensemble
+- Large-scale data virtualization
+- Nextcloud Signal distribution
+- Advanced monitoring and alerting
+
+### **Phase 4**: Enterprise Scale (Months 4-6)
+- Weaviate vector scaling
+- Distributed crawler deployment
+- MAGE integration
+- Performance optimization
+
+## Hardware Requirements
+
+### **Minimum Configuration**
+- **10 servers total** (crawler, processing, GPU, storage nodes)
+- **200TB storage** with enterprise redundancy
+- **10Gb networking** for internal communication
+- **GPU acceleration** for translation workloads
+
+### **Processing Targets**
+- **10,000+ documents/day** at full scale
+- **200+ global sources** monitored continuously
+- **Sub-second search** across millions of artifacts
+- **Real-time evaluation** with human oversight
+
+## Integration with MAGE
+
+LoreGuard is designed as a companion system that:
+- **Shares infrastructure** (LLM providers, authentication, UI patterns)
+- **Feeds curated artifacts** directly into MAGE's knowledge base
+- **Provides diverse perspectives** for roleplay scenarios
+- **Maintains consistent security** and compliance frameworks
+
+## Contact Information
+
+**Headquarters Air Force Wargaming (HAF/WG)**  
+**Air Force Wargaming Institute (AFWI)**
+
+For questions about LoreGuard planning documentation or implementation guidance, refer to the comprehensive research documents in this directory.
+
+---
+
+*This documentation represents the complete research and planning phase for LoreGuard. All major technology decisions have been made and implementation can begin immediately.*
