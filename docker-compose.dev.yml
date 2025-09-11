@@ -1,57 +1,77 @@
 version: '3.8'
 
+# LoreGuard Development Environment
+# Docker Compose configuration for local development
+
 services:
-  # Storage services
+  # PostgreSQL Database
   postgres:
     image: postgres:15
+    container_name: loreguard-postgres
     environment:
-      - POSTGRES_DB=loreguard
-      - POSTGRES_USER=loreguard
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password}
+      POSTGRES_DB: loreguard
+      POSTGRES_USER: loreguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/dev/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./scripts/dev/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U loreguard"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U loreguard -d loreguard"]
+      interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    networks:
+      - loreguard-network
 
+  # Redis Cache and Message Broker
   redis:
     image: redis:7-alpine
+    container_name: loreguard-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password_here} --appendonly yes
     ports:
       - "6379:6379"
-    command: redis-server --requirepass ${REDIS_PASSWORD:-dev_password}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 5s
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    networks:
+      - loreguard-network
 
+  # MinIO Object Storage (S3-compatible)
   minio:
     image: minio/minio:latest
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    container_name: loreguard-minio
     environment:
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-loreguard}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-dev_password}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-loreguard}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minio_password_here}
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    ports:
+      - "9000:9000"  # API port
+      - "9001:9001"  # Console port
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
       interval: 30s
-      timeout: 20s
+      timeout: 10s
       retries: 3
+    restart: unless-stopped
+    networks:
+      - loreguard-network
 
   # Workflow orchestration
   temporal-server:
     image: temporalio/auto-setup:1.22
+    container_name: loreguard-temporal
     ports:
       - "7233:7233"
       - "8233:8233"
@@ -59,54 +79,148 @@ services:
       - DB=postgresql
       - POSTGRES_SEEDS=postgres
       - POSTGRES_USER=loreguard
-      - POSTGRES_PWD=${POSTGRES_PASSWORD:-dev_password}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD:-secure_password_here}
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - loreguard-network
+    profiles:
+      - full  # Only start with --profile full
 
   # Translation services (for development)
   libretranslate:
     image: libretranslate/libretranslate:latest
+    container_name: loreguard-translate
     ports:
       - "5000:5000"
     environment:
       - LT_LOAD_ONLY=en,zh,ru,ar,es,fr,de,ja,ko,fa,ur,hi
     volumes:
       - libretranslate_data:/app/db
+    restart: unless-stopped
+    networks:
+      - loreguard-network
+    profiles:
+      - full  # Only start with --profile full
 
   # Document sharing (development)
   nextcloud:
     image: nextcloud:28-apache
+    container_name: loreguard-nextcloud
     ports:
       - "8080:80"
     environment:
       - POSTGRES_DB=nextcloud
       - POSTGRES_USER=nextcloud
-      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD:-dev_password}
+      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD:-nextcloud_password_here}
       - POSTGRES_HOST=nextcloud-db
     volumes:
       - nextcloud_data:/var/www/html
     depends_on:
       - nextcloud-db
+    restart: unless-stopped
+    networks:
+      - loreguard-network
+    profiles:
+      - full  # Only start with --profile full
 
   nextcloud-db:
     image: postgres:15
+    container_name: loreguard-nextcloud-db
     environment:
       - POSTGRES_DB=nextcloud
       - POSTGRES_USER=nextcloud
-      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD:-dev_password}
+      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD:-nextcloud_password_here}
     volumes:
       - nextcloud_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud -d nextcloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - loreguard-network
+    profiles:
+      - full  # Only start with --profile full
 
+  # Development Tools and Utilities
+  
+  # PostgreSQL Admin (pgAdmin)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: loreguard-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@loreguard.dev
+      PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - loreguard-network
+    profiles:
+      - tools  # Only start with --profile tools
+
+  # Redis Commander (Redis Admin UI)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: loreguard-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379:0:${REDIS_PASSWORD:-redis_password_here}
+      HTTP_USER: admin
+      HTTP_PASSWORD: ${REDIS_PASSWORD:-redis_password_here}
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - loreguard-network
+    profiles:
+      - tools  # Only start with --profile tools
+
+# Named volumes for data persistence
 volumes:
   postgres_data:
+    driver: local
+    name: loreguard_postgres_data
+  
   redis_data:
+    driver: local
+    name: loreguard_redis_data
+  
   minio_data:
+    driver: local
+    name: loreguard_minio_data
+  
   libretranslate_data:
+    driver: local
+    name: loreguard_libretranslate_data
+  
   nextcloud_data:
+    driver: local
+    name: loreguard_nextcloud_data
+  
   nextcloud_db_data:
+    driver: local
+    name: loreguard_nextcloud_db_data
+  
+  pgadmin_data:
+    driver: local
+    name: loreguard_pgadmin_data
 
+# Custom network for service communication
 networks:
-  default:
-    name: loreguard_dev
+  loreguard-network:
+    driver: bridge
+    name: loreguard-network
 

@@ -61,7 +61,7 @@ class ArtifactResponse(ArtifactBase):
     created_at: datetime
     
     # Related data
-    metadata: Optional[MetadataResponse] = None
+    document_metadata: Optional[MetadataResponse] = None
     clarification: Optional[ClarificationResponse] = None
     latest_evaluation: Optional[EvaluationSummary] = None
     
