@@ -129,7 +129,7 @@ const NotFound = ({ onNavigateHome, onNavigateBack }) => {
               <div className="text-xs text-aulendur-steel">Facts & Perspectives Harvesting</div>
             </div>
           </div>
-          <p className="text-xs text-aulendur-steel">© 2024 Aulendur LLC. All rights reserved.</p>
+          <p className="text-xs text-aulendur-steel">© 2024 Air Force Wargaming. All rights reserved.</p>
         </div>
       </div>
     </div>

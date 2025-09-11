@@ -41,7 +41,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   
-  /* Aulendur LLC Color Scheme */
+  /* LoreGuard Color Scheme */
   --aulendur-cream: #FFFEFB;
   --aulendur-sage: #7B949C;
   --aulendur-steel: #5C798B;
@@ -52,7 +52,7 @@
 :root {
   --radius: 0.625rem;
   
-  /* Light theme using Aulendur colors */
+  /* Light theme using LoreGuard colors */
   --background: #FFFEFB;
   --foreground: #182241;
   --card: #FFFEFB;
@@ -129,7 +129,7 @@
     font-family: 'Nunito Sans', sans-serif;
   }
   
-  /* Aulendur Typography */
+  /* LoreGuard Typography */
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Oswald', sans-serif;
     font-weight: 500;
@@ -140,7 +140,7 @@
   }
 }
 
-/* Custom gradient backgrounds for Aulendur aesthetic */
+/* Custom gradient backgrounds for LoreGuard aesthetic */
 .aulendur-gradient-header {
   background: linear-gradient(135deg, #213C4E 0%, #5C798B 50%, #7B949C 100%);
 }

@@ -157,7 +157,7 @@ function App() {
             {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
           <div className="text-sm text-muted-foreground">
-            Aulendur LLC
+            Air Force Wargaming
           </div>
           <Button
             variant="outline"

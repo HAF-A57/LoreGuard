@@ -159,7 +159,7 @@ const Login = ({ onLogin }) => {
             <CheckCircle className="h-4 w-4" />
             <span>Secure Authentication</span>
           </div>
-          <p>© 2024 Aulendur LLC. All rights reserved.</p>
+          <p>© 2024 Air Force Wargaming. All rights reserved.</p>
         </div>
       </div>
     </div>

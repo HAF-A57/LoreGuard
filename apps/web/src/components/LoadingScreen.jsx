@@ -136,7 +136,7 @@ const LoadingScreen = ({ onLoadingComplete }) => {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-aulendur-steel">
-          <p className="mb-2">Powered by Aulendur LLC</p>
+          <p className="mb-2">Built by Air Force Wargaming</p>
           <div className="flex items-center justify-center space-x-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span>System Status: Healthy</span>
