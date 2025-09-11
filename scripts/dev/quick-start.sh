@@ -84,11 +84,11 @@ if [[ ! -f .env ]]; then
     MINIO_SECRET_KEY=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
     JWT_SECRET_KEY=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-50)
     
-    # Update .env with generated passwords
-    sed -i "s/secure_password_here/$POSTGRES_PASSWORD/" .env
-    sed -i "s/redis_password_here/$REDIS_PASSWORD/" .env
-    sed -i "s/minio_password_here/$MINIO_SECRET_KEY/" .env
-    sed -i "s/your_jwt_secret_key_here/$JWT_SECRET_KEY/" .env
+    # Update .env with generated passwords (using | as delimiter to avoid conflicts)
+    sed -i "s|secure_password_here|$POSTGRES_PASSWORD|" .env
+    sed -i "s|redis_password_here|$REDIS_PASSWORD|" .env
+    sed -i "s|minio_password_here|$MINIO_SECRET_KEY|" .env
+    sed -i "s|your_jwt_secret_key_here|$JWT_SECRET_KEY|" .env
     
     echo -e "${GREEN}✅ Environment configuration created${NC}"
 else
