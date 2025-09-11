@@ -81,9 +81,16 @@
 ## 🎯 CURRENT PHASE: Phase 7.2 - Document Processing Service
 
 ### Phase 7.2 Objectives (IN PROGRESS):
-- [ ] Create `apps/svc-normalize` service structure
+- [x] Create `apps/svc-normalize` service structure
+- [x] Create comprehensive requirements file with document processing dependencies
+- [x] Implement FastAPI service framework with core endpoints
+- [x] Create configuration management system with Pydantic settings
+- [x] Set up structured logging with JSON/console output
+- [x] Create document processing data models and schemas
+- [x] Implement health service with system monitoring
+- [x] Create API router structure with placeholder endpoints
 - [ ] Implement unstructured.io integration for 20+ document formats
-- [ ] Add GROBID integration for academic papers and technical reports
+- [ ] Add GROBID/PyMuPDF integration for academic papers and technical reports
 - [ ] Implement Tesseract OCR fallback for image-based documents
 - [ ] Create metadata extraction pipeline (title, authors, organization, pub_date)
 - [ ] Build content normalization and cleaning workflows
