@@ -20,6 +20,7 @@ out/
 
 # Logs
 *.log
+logs/
 
 # Temporary folders
 tmp/
@@ -28,4 +29,87 @@ temp/
 # Storage and data
 storage/
 data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# PyCharm
+.idea/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Scrapy
+.scrapy
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+.docker/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+*.swp
+*.swo
+*~
+
+# LoreGuard specific
+test.db
+evidence-storage/
+backups/
+crawler-data/
+tesseract-models/
+libretranslate-models/
+nllb-models/
+ollama-models/
+nextcloud-data/
+nextcloud-db/
+minio-data/
+postgres-data/
+redis-data/
 
