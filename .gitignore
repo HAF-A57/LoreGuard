@@ -5,6 +5,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Vite
+.vite/
+node_modules/.vite/
+
 # Production builds
 dist/
 build/
