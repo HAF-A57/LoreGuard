@@ -89,7 +89,8 @@
 - [x] Create document processing data models and schemas
 - [x] Implement health service with system monitoring
 - [x] Create API router structure with placeholder endpoints
-- [ ] Implement unstructured.io integration for 20+ document formats
+- [x] Implement comprehensive document parser service with unstructured.io integration
+- [x] Create metadata extraction service with NLP capabilities
 - [ ] Add GROBID/PyMuPDF integration for academic papers and technical reports
 - [ ] Implement Tesseract OCR fallback for image-based documents
 - [ ] Create metadata extraction pipeline (title, authors, organization, pub_date)
