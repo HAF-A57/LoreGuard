@@ -118,7 +118,7 @@ fi
 
 # Frontend
 TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
-if check_http_service "Frontend" "http://localhost:5173"; then
+if check_http_service "Frontend" "http://localhost:6060"; then
     PASSED_CHECKS=$((PASSED_CHECKS + 1))
 fi
 
@@ -226,8 +226,7 @@ check_port() {
     fi
 }
 
-check_port 3000 "Frontend (Production)"
-check_port 5173 "Frontend (Development)"
+check_port 6060 "Frontend (Development)"
 check_port 8000 "Backend API"
 check_port 5432 "PostgreSQL"
 check_port 6379 "Redis"
@@ -244,7 +243,7 @@ if [[ $PASSED_CHECKS -eq $TOTAL_CHECKS ]]; then
     echo -e "${GREEN}🎉 All systems healthy! ($PASSED_CHECKS/$TOTAL_CHECKS)${NC}"
     echo ""
     echo -e "${BLUE}🌐 Access URLs:${NC}"
-    echo -e "   Frontend:      ${YELLOW}http://localhost:5173${NC}"
+    echo -e "   Frontend:      ${YELLOW}http://localhost:6060${NC}"
     echo -e "   Backend API:   ${YELLOW}http://localhost:8000${NC}"
     echo -e "   API Docs:      ${YELLOW}http://localhost:8000/docs${NC}"
     echo -e "   MinIO Console: ${YELLOW}http://localhost:9001${NC}"

@@ -181,7 +181,7 @@ echo $FRONTEND_PID > ../../logs/frontend.pid
 
 # Wait for frontend to start
 echo -n "Waiting for frontend"
-until curl -s http://localhost:5173 &> /dev/null; do
+until curl -s http://localhost:6060 &> /dev/null; do
     echo -n "."
     sleep 2
 done
@@ -205,7 +205,7 @@ echo ""
 echo -e "${GREEN}🎉 LoreGuard is ready!${NC}"
 echo ""
 echo -e "${BLUE}📱 Access URLs:${NC}"
-echo -e "   Frontend:     ${YELLOW}http://localhost:5173${NC}"
+echo -e "   Frontend:     ${YELLOW}http://localhost:6060${NC}"
 echo -e "   Backend API:  ${YELLOW}http://localhost:8000${NC}"
 echo -e "   API Docs:     ${YELLOW}http://localhost:8000/docs${NC}"
 echo -e "   MinIO Console:${YELLOW}http://localhost:9001${NC}"

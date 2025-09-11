@@ -34,7 +34,7 @@ This script will:
 - ✅ Start development servers
 
 **Default Login:**
-- **URL**: http://localhost:3000
+- **URL**: http://localhost:6060
 - **Username**: admin@airforcewargaming.com  
 - **Password**: LoreGuard2024!
 
@@ -117,7 +117,7 @@ npm run dev &
 # ✅ Redis: Connected  
 # ✅ MinIO: Connected
 # ✅ Backend API: Healthy
-# ✅ Frontend: Running on http://localhost:3000
+# ✅ Frontend: Running on http://localhost:6060
 ```
 
 ## 🏗️ Architecture Overview
@@ -329,7 +329,7 @@ MINIO_SECRET_KEY=minio_password_here
 # API Configuration
 API_HOST=0.0.0.0
 API_PORT=8000
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+CORS_ORIGINS=http://localhost:6060
 
 # Frontend Configuration
 VITE_API_URL=http://localhost:8000
@@ -344,7 +344,7 @@ ADMIN_PASSWORD=LoreGuard2024!
 
 | Service | Port | URL | Purpose |
 |---------|------|-----|---------|
-| Frontend | 3000 | http://localhost:3000 | React development server |
+| Frontend | 6060 | http://localhost:6060 | React development server |
 | Backend API | 8000 | http://localhost:8000 | FastAPI REST API |
 | PostgreSQL | 5432 | localhost:5432 | Database server |
 | Redis | 6379 | localhost:6379 | Cache and message broker |
@@ -416,7 +416,7 @@ loreguard-web:
 #### **Port Already in Use**
 ```bash
 # Find process using port
-sudo lsof -i :3000
+sudo lsof -i :6060
 sudo lsof -i :8000
 
 # Kill process
@@ -472,7 +472,7 @@ curl http://localhost:8000/api/v1/test/ping
 curl http://localhost:8000/api/v1/test/db-test
 
 # Test frontend
-curl http://localhost:3000
+curl http://localhost:6060
 ```
 
 ### Reset Environment
