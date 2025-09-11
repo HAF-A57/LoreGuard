@@ -178,11 +178,9 @@ WHERE a.uri LIKE '%' || CASE
 END || '%';
 
 -- Insert sample rubric
-INSERT INTO rubrics (id, version, name, description, categories, thresholds, is_active, created_at) VALUES (
+INSERT INTO rubrics (id, version, categories, thresholds, prompts, is_active, created_at) VALUES (
     uuid_generate_v4(),
     'v2.1',
-    'Military Wargaming Relevance Assessment',
-    'Evaluates documents for relevance to military wargaming scenarios, strategic planning, and operational analysis',
     '[
         {
             "id": "credibility",
@@ -251,6 +249,7 @@ INSERT INTO rubrics (id, version, name, description, categories, thresholds, is_
         }
     ]',
     '{"signal_min": 3.5, "review_min": 2.5, "noise_max": 2.4}',
+    '{"evaluation": "prompt_ref_eval_v2_1", "metadata": "prompt_ref_meta_v2_1", "clarification": "prompt_ref_clarify_v2_1"}',
     true,
     NOW() - INTERVAL '30 days'
 );
@@ -259,7 +258,6 @@ INSERT INTO rubrics (id, version, name, description, categories, thresholds, is_
 WITH eval_data AS (
     SELECT 
         a.id as artifact_id,
-        r.id as rubric_id,
         r.version as rubric_version,
         dm.title
     FROM artifacts a
@@ -268,43 +266,43 @@ WITH eval_data AS (
     WHERE r.version = 'v2.1'
     LIMIT 8
 )
-INSERT INTO evaluations (id, artifact_id, rubric_id, rubric_version, scores, label, confidence, total_score, model_id, created_at)
+INSERT INTO evaluations (id, artifact_id, rubric_version, scores, label, confidence, model_id, created_at)
 SELECT 
     uuid_generate_v4(),
     ed.artifact_id,
-    ed.rubric_id,
     ed.rubric_version,
     scores,
     label,
     confidence,
-    total_score,
     'gpt-4-0613',
     NOW() - INTERVAL '1 day'
 FROM eval_data ed
 CROSS JOIN (
     VALUES 
-        ('{"credibility": 4.2, "relevance": 4.5, "timeliness": 4.0, "novelty": 3.8, "coverage": 4.1}', 'Signal', 0.92, 4.18),
-        ('{"credibility": 3.8, "relevance": 4.2, "timeliness": 3.5, "novelty": 3.2, "coverage": 3.9}', 'Signal', 0.87, 3.76),
-        ('{"credibility": 4.5, "relevance": 3.9, "timeliness": 3.2, "novelty": 4.1, "coverage": 3.7}', 'Signal', 0.89, 3.84),
-        ('{"credibility": 3.2, "relevance": 3.8, "timeliness": 4.2, "novelty": 2.9, "coverage": 3.4}', 'Signal', 0.81, 3.58),
-        ('{"credibility": 3.9, "relevance": 3.1, "timeliness": 2.8, "novelty": 3.5, "coverage": 3.2}', 'Review', 0.75, 3.21),
-        ('{"credibility": 2.8, "relevance": 2.9, "timeliness": 3.1, "novelty": 2.5, "coverage": 2.7}', 'Review', 0.68, 2.78),
-        ('{"credibility": 4.1, "relevance": 4.3, "timeliness": 4.5, "novelty": 3.7, "coverage": 4.0}', 'Signal', 0.94, 4.15),
-        ('{"credibility": 3.5, "relevance": 4.0, "timeliness": 4.2, "novelty": 3.3, "coverage": 3.8}', 'Signal', 0.88, 3.78)
-) AS eval_scores(scores, label, confidence, total_score)
+        ('{"credibility": 4.2, "relevance": 4.5, "timeliness": 4.0, "novelty": 3.8, "coverage": 4.1}', 'Signal', 0.92),
+        ('{"credibility": 3.8, "relevance": 4.2, "timeliness": 3.5, "novelty": 3.2, "coverage": 3.9}', 'Signal', 0.87),
+        ('{"credibility": 4.5, "relevance": 3.9, "timeliness": 3.2, "novelty": 4.1, "coverage": 3.7}', 'Signal', 0.89),
+        ('{"credibility": 3.2, "relevance": 3.8, "timeliness": 4.2, "novelty": 2.9, "coverage": 3.4}', 'Signal', 0.81),
+        ('{"credibility": 3.9, "relevance": 3.1, "timeliness": 2.8, "novelty": 3.5, "coverage": 3.2}', 'Review', 0.75),
+        ('{"credibility": 2.8, "relevance": 2.9, "timeliness": 3.1, "novelty": 2.5, "coverage": 2.7}', 'Review', 0.68),
+        ('{"credibility": 4.1, "relevance": 4.3, "timeliness": 4.5, "novelty": 3.7, "coverage": 4.0}', 'Signal', 0.94),
+        ('{"credibility": 3.5, "relevance": 4.0, "timeliness": 4.2, "novelty": 3.3, "coverage": 3.8}', 'Signal', 0.88)
+) AS eval_scores(scores, label, confidence)
 LIMIT 8;
 
 -- Insert sample jobs
-INSERT INTO jobs (id, job_type, status, source_id, config, progress, started_at, completed_at, error_message, created_at) 
+INSERT INTO jobs (id, type, status, payload, error, created_at) 
 SELECT 
     uuid_generate_v4(),
     job_type,
     status,
-    s.id,
-    config,
-    progress,
-    started_at,
-    completed_at,
+    jsonb_build_object(
+        'source_id', s.id::text,
+        'config', config,
+        'progress', progress,
+        'started_at', started_at::text,
+        'completed_at', completed_at::text
+    ),
     error_message,
     created_at
 FROM sources s

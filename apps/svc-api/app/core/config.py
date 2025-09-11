@@ -34,7 +34,7 @@ class Settings(BaseSettings):
         raise ValueError(v)
     
     # Database Configuration
-    DATABASE_URL: str = "postgresql://loreguard:password@localhost:5432/loreguard"
+    DATABASE_URL: str = "postgresql://loreguard:secure_password_here@localhost:5432/loreguard"
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
     
@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra fields from .env file
 
 # Create global settings instance
 settings = Settings()

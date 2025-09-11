@@ -20,7 +20,7 @@ import {
 const Analytics = () => {
   // Mock data for analytics
   const performanceMetrics = {
-    totalDocuments: 45892,
+    totalArtifacts: 45892,
     signalRate: 12.3,
     avgProcessingTime: 2.4,
     accuracyRate: 94.2,
@@ -29,11 +29,11 @@ const Analytics = () => {
   }
 
   const topSources = [
-    { name: "NATO Strategic Communications", documents: 8934, signalRate: 15.2, avgConfidence: 82.1 },
-    { name: "International Economic Forum", documents: 6721, signalRate: 11.8, avgConfidence: 79.3 },
-    { name: "Cybersecurity Research Institute", documents: 5643, signalRate: 14.7, avgConfidence: 81.5 },
-    { name: "Defense Policy Institute", documents: 4892, signalRate: 9.4, avgConfidence: 76.8 },
-    { name: "Regional Security Council", documents: 3756, signalRate: 13.1, avgConfidence: 80.2 }
+    { name: "NATO Strategic Communications", artifacts: 8934, signalRate: 15.2, avgConfidence: 82.1 },
+    { name: "International Economic Forum", artifacts: 6721, signalRate: 11.8, avgConfidence: 79.3 },
+    { name: "Cybersecurity Research Institute", artifacts: 5643, signalRate: 14.7, avgConfidence: 81.5 },
+    { name: "Defense Policy Institute", artifacts: 4892, signalRate: 9.4, avgConfidence: 76.8 },
+    { name: "Regional Security Council", artifacts: 3756, signalRate: 13.1, avgConfidence: 80.2 }
   ]
 
   const topicDistribution = [
@@ -55,10 +55,10 @@ const Analytics = () => {
   ]
 
   const weeklyTrends = [
-    { week: "Week 1", documents: 8934, signals: 1098, accuracy: 93.2 },
-    { week: "Week 2", documents: 9234, signals: 1156, accuracy: 94.1 },
-    { week: "Week 3", documents: 8756, signals: 1089, accuracy: 93.8 },
-    { week: "Week 4", documents: 9567, signals: 1234, accuracy: 94.7 }
+    { week: "Week 1", artifacts: 8934, signals: 1098, accuracy: 93.2 },
+    { week: "Week 2", artifacts: 9234, signals: 1156, accuracy: 94.1 },
+    { week: "Week 3", artifacts: 8756, signals: 1089, accuracy: 93.8 },
+    { week: "Week 4", artifacts: 9567, signals: 1234, accuracy: 94.7 }
   ]
 
   return (
@@ -79,11 +79,11 @@ const Analytics = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="aulendur-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Artifacts</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{performanceMetrics.totalDocuments.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{performanceMetrics.totalArtifacts.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">All time processed</p>
           </CardContent>
         </Card>
@@ -95,7 +95,7 @@ const Analytics = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{performanceMetrics.signalRate}%</div>
-            <p className="text-xs text-muted-foreground">High-value documents identified</p>
+            <p className="text-xs text-muted-foreground">High-value artifacts identified</p>
           </CardContent>
         </Card>
 
@@ -106,7 +106,7 @@ const Analytics = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{performanceMetrics.avgProcessingTime}s</div>
-            <p className="text-xs text-muted-foreground">Average per document</p>
+            <p className="text-xs text-muted-foreground">Average per artifact</p>
           </CardContent>
         </Card>
 
@@ -159,7 +159,7 @@ const Analytics = () => {
                 <BarChart3 className="h-5 w-5" />
                 <span>Top Performing Sources</span>
               </CardTitle>
-              <CardDescription>Sources ranked by document volume and signal rate</CardDescription>
+              <CardDescription>Sources ranked by artifact volume and signal rate</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -171,7 +171,7 @@ const Analytics = () => {
                       </div>
                       <div>
                         <div className="font-medium">{source.name}</div>
-                        <div className="text-sm text-muted-foreground">{source.documents.toLocaleString()} documents</div>
+                        <div className="text-sm text-muted-foreground">{source.artifacts.toLocaleString()} artifacts</div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-6">
@@ -198,7 +198,7 @@ const Analytics = () => {
                 <Activity className="h-5 w-5" />
                 <span>Topic Distribution</span>
               </CardTitle>
-              <CardDescription>Document categorization and trending topics</CardDescription>
+              <CardDescription>Artifact categorization and trending topics</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -231,7 +231,7 @@ const Analytics = () => {
                 <MapPin className="h-5 w-5" />
                 <span>Geographic Distribution</span>
               </CardTitle>
-              <CardDescription>Document sources by geographic region</CardDescription>
+              <CardDescription>Artifact sources by geographic region</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -241,7 +241,7 @@ const Analytics = () => {
                       <Globe className="h-5 w-5 text-muted-foreground" />
                       <div>
                         <div className="font-medium">{region.region}</div>
-                        <div className="text-sm text-muted-foreground">{region.count.toLocaleString()} documents</div>
+                        <div className="text-sm text-muted-foreground">{region.count.toLocaleString()} artifacts</div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-6">
@@ -277,8 +277,8 @@ const Analytics = () => {
                     <div className="font-medium">{week.week}</div>
                     <div className="flex items-center space-x-6">
                       <div className="text-center">
-                        <div className="text-lg font-bold">{week.documents.toLocaleString()}</div>
-                        <div className="text-xs text-muted-foreground">Documents</div>
+                        <div className="text-lg font-bold">{week.artifacts.toLocaleString()}</div>
+                        <div className="text-xs text-muted-foreground">Artifacts</div>
                       </div>
                       <div className="text-center">
                         <div className="text-lg font-bold text-primary">{week.signals}</div>

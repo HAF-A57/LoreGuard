@@ -28,12 +28,12 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
     {
       id: 1,
       type: 'assistant',
-      content: "Hello! I'm your LoreGuard AI Assistant. I can help you analyze documents, understand evaluation criteria, navigate the system, and answer questions about your data. How can I assist you today?",
+      content: "Hello! I'm your LoreGuard AI Assistant. I can help you analyze artifacts, understand evaluation criteria, navigate the system, and answer questions about your data. How can I assist you today?",
       timestamp: new Date().toISOString(),
       suggestions: [
-        "Explain this document's significance",
+        "Explain this artifact's significance",
         "What are the current evaluation criteria?",
-        "Show me recent Signal documents",
+        "Show me recent Signal artifacts",
         "How do I configure sources?"
       ]
     }
@@ -81,10 +81,10 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
 
   const generateAIResponse = (input) => {
     const responses = {
-      'document': "I can help you analyze documents in your LoreGuard system. Documents are evaluated using our Military Wargaming Relevance Rubric, which considers Strategic Relevance (30%), Source Credibility (25%), Temporal Relevance (20%), Geographic Scope (15%), and Actionable Intelligence (10%). Would you like me to explain any specific document or evaluation criteria?",
+      'artifact': "I can help you analyze artifacts in your LoreGuard system. Artifacts are evaluated using our Military Wargaming Relevance Rubric, which considers Strategic Relevance (30%), Source Credibility (25%), Temporal Relevance (20%), Geographic Scope (15%), and Actionable Intelligence (10%). Would you like me to explain any specific artifact or evaluation criteria?",
       'source': "LoreGuard currently monitors 47 active sources including NATO Strategic Communications, International Economic Forum, and Cybersecurity Research Institute. Sources are automatically crawled based on their configured schedules. You can manage sources in the Sources page. Would you like help configuring a new source?",
-      'evaluation': "The evaluation system uses AI models to assess document relevance for military wargaming scenarios. The current active rubric (v2.1) has a 94.2% accuracy rate. Documents are classified as Signal (high-value), Review (moderate value), or Noise (low value). What specific aspect of evaluation would you like to understand better?",
-      'signal': "Signal documents are high-value artifacts that meet our relevance criteria with high confidence scores. Currently, you have 892 Signal documents in your library. These are curated for distribution to the wargaming community. Would you like me to show you the latest Signal documents or help you understand the classification criteria?"
+      'evaluation': "The evaluation system uses AI models to assess artifact relevance for military wargaming scenarios. The current active rubric (v2.1) has a 94.2% accuracy rate. Artifacts are classified as Signal (high-value), Review (moderate value), or Noise (low value). What specific aspect of evaluation would you like to understand better?",
+      'signal': "Signal artifacts are high-value artifacts that meet our relevance criteria with high confidence scores. Currently, you have 892 Signal artifacts in your library. These are curated for distribution to the wargaming community. Would you like me to show you the latest Signal artifacts or help you understand the classification criteria?"
     }
 
     const lowerInput = input.toLowerCase()
@@ -94,16 +94,16 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
       }
     }
 
-    return "I understand you're asking about LoreGuard functionality. I can help with document analysis, source management, evaluation criteria, system navigation, and data insights. Could you be more specific about what you'd like to know?"
+    return "I understand you're asking about LoreGuard functionality. I can help with artifact analysis, source management, evaluation criteria, system navigation, and data insights. Could you be more specific about what you'd like to know?"
   }
 
   const generateSuggestions = (input) => {
     const suggestionSets = {
-      'document': [
-        "Show document confidence scores",
+      'artifact': [
+        "Show artifact confidence scores",
         "Explain evaluation criteria",
-        "Find similar documents",
-        "Export document analysis"
+        "Find similar artifacts",
+        "Export artifact analysis"
       ],
       'source': [
         "Add new source",
@@ -153,7 +153,7 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
           variant="ghost"
           size="sm"
           onClick={onToggleCollapse}
-          className="aulendur-hover-transform"
+          className="aulendur-hover-transform text-sidebar-foreground hover:text-sidebar-accent-foreground"
         >
           <MessageSquare className="h-4 w-4" />
         </Button>
@@ -164,23 +164,23 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
   return (
     <div className="w-80 bg-sidebar border-l border-sidebar-border flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-sidebar-border">
+      <div className="p-4 border-b border-sidebar-border ai-assistant-header">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <Bot className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold">AI Assistant</h3>
-              <p className="text-xs text-muted-foreground">LoreGuard Helper</p>
+              <h3 className="font-semibold text-sidebar-foreground">AI Assistant</h3>
+              <p className="text-xs text-sidebar-foreground/70">LoreGuard Helper</p>
             </div>
           </div>
           <div className="flex items-center space-x-1">
-            <Button variant="ghost" size="sm" onClick={onToggleCollapse}>
+            <Button variant="ghost" size="sm" onClick={onToggleCollapse} className="text-sidebar-foreground hover:text-sidebar-accent-foreground">
               <Minimize2 className="h-4 w-4" />
             </Button>
             {onClose && (
-              <Button variant="ghost" size="sm" onClick={onClose}>
+              <Button variant="ghost" size="sm" onClick={onClose} className="text-sidebar-foreground hover:text-sidebar-accent-foreground">
                 <X className="h-4 w-4" />
               </Button>
             )}

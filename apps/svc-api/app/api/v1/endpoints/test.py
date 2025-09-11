@@ -24,8 +24,8 @@ async def test_database(db: Session = Depends(get_db)):
         
         # Count tables
         tables_result = db.execute(text("""
-            SELECT name FROM sqlite_master 
-            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+            SELECT tablename FROM pg_tables 
+            WHERE schemaname = 'public'
         """)).fetchall()
         
         table_names = [row[0] for row in tables_result]

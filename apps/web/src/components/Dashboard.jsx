@@ -19,9 +19,9 @@ import {
 const Dashboard = () => {
   // Mock data for dashboard metrics
   const metrics = {
-    totalDocuments: 12847,
+    totalArtifacts: 12847,
     todayProcessed: 1247,
-    signalDocuments: 892,
+    signalArtifacts: 892,
     activeSources: 47,
     evaluationAccuracy: 94.2,
     processingSpeed: 156
@@ -59,11 +59,11 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="aulendur-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Artifacts</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalDocuments.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{metrics.totalArtifacts.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               +{metrics.todayProcessed} processed today
             </p>
@@ -72,11 +72,11 @@ const Dashboard = () => {
 
         <Card className="aulendur-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Signal Documents</CardTitle>
+            <CardTitle className="text-sm font-medium">Signal Artifacts</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.signalDocuments}</div>
+            <div className="text-2xl font-bold">{metrics.signalArtifacts}</div>
             <p className="text-xs text-muted-foreground">
               High-value artifacts identified
             </p>
@@ -115,7 +115,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">{metrics.processingSpeed}</div>
             <p className="text-xs text-muted-foreground">
-              Documents per hour
+              Artifacts per hour
             </p>
           </CardContent>
         </Card>
@@ -141,7 +141,7 @@ const Dashboard = () => {
               <Clock className="h-5 w-5" />
               <span>Recent Activity</span>
             </CardTitle>
-            <CardDescription>Latest document evaluations</CardDescription>
+            <CardDescription>Latest artifact evaluations</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -189,7 +189,7 @@ const Dashboard = () => {
                     )}
                     <div>
                       <p className="text-sm font-medium">{source.name}</p>
-                      <p className="text-xs text-muted-foreground">{source.docs} documents</p>
+                      <p className="text-xs text-muted-foreground">{source.docs} artifacts</p>
                     </div>
                   </div>
                   <div className="text-right">

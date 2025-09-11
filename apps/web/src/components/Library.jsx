@@ -92,7 +92,7 @@ const Library = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold">Signal Library</h1>
-            <p className="text-muted-foreground">Curated high-value documents for distribution</p>
+            <p className="text-muted-foreground">Curated high-value artifacts for distribution</p>
           </div>
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm">

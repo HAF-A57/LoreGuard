@@ -102,14 +102,14 @@ const NotFound = ({ onNavigateHome, onNavigateBack }) => {
 
         {/* Help Section */}
         <div className="mt-8 text-sm text-aulendur-steel">
-          <p className="mb-2">Still need help? Contact support or check our documentation.</p>
+          <p className="mb-2">Still need help? Contact support or check our user guide.</p>
           <div className="flex items-center justify-center space-x-4">
             <Button variant="link" className="p-0 h-auto">
               Contact Support
             </Button>
             <span>•</span>
             <Button variant="link" className="p-0 h-auto">
-              Documentation
+              User Guide
             </Button>
             <span>•</span>
             <Button variant="link" className="p-0 h-auto">

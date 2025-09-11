@@ -38,6 +38,8 @@ This script will:
 - **Username**: admin@airforcewargaming.com  
 - **Password**: LoreGuard2024!
 
+**Note**: The application now uses "artifact" terminology throughout instead of "document" for better consistency.
+
 ## 📋 Manual Setup (Step by Step)
 
 ### 1. System Dependencies
@@ -126,13 +128,16 @@ npm run dev &
 
 | Component | Status | Description |
 |-----------|--------|-------------|
-| **Frontend** | ✅ **Complete** | React + Vite + Tailwind + shadcn/ui |
-| **Backend API** | ✅ **Complete** | FastAPI + SQLAlchemy + PostgreSQL |
-| **Database** | ✅ **Complete** | PostgreSQL with pgvector extension |
-| **Object Storage** | ✅ **Complete** | MinIO S3-compatible storage |
-| **Authentication** | ✅ **Complete** | JWT-based with RBAC |
-| **UI Components** | ✅ **Complete** | 8 pages + AI assistant integration |
-| **Container Setup** | ✅ **Complete** | Docker Compose orchestration |
+| **Frontend** | ✅ **Complete** | React + Vite + Tailwind + shadcn/ui with professional branding |
+| **Backend API** | ✅ **Complete** | FastAPI + SQLAlchemy + PostgreSQL with full CRUD operations |
+| **Database** | ✅ **Complete** | PostgreSQL with 8 application tables + admin/audit tables |
+| **Object Storage** | ✅ **Complete** | MinIO S3-compatible storage with health checks |
+| **Authentication** | ✅ **Complete** | Admin user system with default credentials |
+| **UI Components** | ✅ **Complete** | 8 pages + AI assistant with enhanced contrast |
+| **Container Setup** | ✅ **Complete** | Docker Compose orchestration with volume management |
+| **Sample Data** | ✅ **Complete** | 9 realistic sources with metadata |
+| **Health Monitoring** | ✅ **Complete** | Comprehensive health check scripts |
+| **Startup Scripts** | ✅ **Complete** | One-command setup with error handling |
 
 ### Next Phase: Evaluation Pipeline
 
@@ -154,7 +159,9 @@ Based on the [Final Technology Roadmap](./Planning/FinalTechnologyRoadmap.md), t
 - **AI Assistant Integration**: Context-aware chatbot with LoreGuard knowledge
 - **Authentication Flow**: Login system with loading screens
 - **Responsive Design**: Mobile-friendly with dark/light mode
-- **Professional UI**: Air Force Wargaming branding with Aulendur design system
+- **Professional UI**: Air Force Wargaming branding with official LoreGuard logo
+- **Enhanced Accessibility**: Improved text contrast and visibility
+- **Consistent Terminology**: Uses "artifact" terminology throughout for clarity
 
 #### **Backend Services**
 - **REST API**: FastAPI with OpenAPI documentation
@@ -344,7 +351,7 @@ ADMIN_PASSWORD=LoreGuard2024!
 
 | Service | Port | URL | Purpose |
 |---------|------|-----|---------|
-| Frontend | 6060 | http://localhost:6060 | React development server |
+| Frontend | 6060 | http://localhost:6060 | React development server (Vite) |
 | Backend API | 8000 | http://localhost:8000 | FastAPI REST API |
 | PostgreSQL | 5432 | localhost:5432 | Database server |
 | Redis | 6379 | localhost:6379 | Cache and message broker |

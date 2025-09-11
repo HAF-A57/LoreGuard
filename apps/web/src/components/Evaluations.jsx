@@ -134,7 +134,7 @@ const Evaluations = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="aulendur-hover-transform">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Documents Evaluated</CardTitle>
+                <CardTitle className="text-sm font-medium">Artifacts Evaluated</CardTitle>
                 <Brain className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -172,7 +172,7 @@ const Evaluations = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">2.3s</div>
-                <p className="text-xs text-muted-foreground">Avg per document</p>
+                <p className="text-xs text-muted-foreground">Avg per artifact</p>
               </CardContent>
             </Card>
           </div>
@@ -251,7 +251,7 @@ const Evaluations = () => {
                       <div className="flex items-center space-x-4">
                         <div>
                           <div className="font-medium">{result.date}</div>
-                          <div className="text-sm text-muted-foreground">{result.total} documents</div>
+                          <div className="text-sm text-muted-foreground">{result.total} artifacts</div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-6">

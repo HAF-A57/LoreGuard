@@ -171,7 +171,7 @@ const Artifacts = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <FileText className="h-5 w-5" />
-                    <span>Document Summary</span>
+                    <span>Artifact Summary</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

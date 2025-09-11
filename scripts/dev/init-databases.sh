@@ -104,25 +104,35 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 
--- Create system health check function
+-- Create system health check function (will work after application tables are created)
 CREATE OR REPLACE FUNCTION system_health_check()
 RETURNS JSONB AS $$
 DECLARE
     result JSONB;
-    total_sources INTEGER;
-    active_sources INTEGER;
-    total_artifacts INTEGER;
-    recent_artifacts INTEGER;
+    total_sources INTEGER := 0;
+    active_sources INTEGER := 0;
+    total_artifacts INTEGER := 0;
+    recent_artifacts INTEGER := 0;
 BEGIN
-    -- Count sources
-    SELECT COUNT(*) INTO total_sources FROM sources;
-    SELECT COUNT(*) INTO active_sources FROM sources WHERE status = 'active';
+    -- Count sources (handle missing table gracefully)
+    BEGIN
+        SELECT COUNT(*) INTO total_sources FROM sources;
+        SELECT COUNT(*) INTO active_sources FROM sources WHERE status = 'active';
+    EXCEPTION WHEN undefined_table THEN
+        total_sources := 0;
+        active_sources := 0;
+    END;
     
-    -- Count artifacts
-    SELECT COUNT(*) INTO total_artifacts FROM artifacts;
-    SELECT COUNT(*) INTO recent_artifacts 
-    FROM artifacts 
-    WHERE created_at > NOW() - INTERVAL '24 hours';
+    -- Count artifacts (handle missing table gracefully)
+    BEGIN
+        SELECT COUNT(*) INTO total_artifacts FROM artifacts;
+        SELECT COUNT(*) INTO recent_artifacts 
+        FROM artifacts 
+        WHERE created_at > NOW() - INTERVAL '24 hours';
+    EXCEPTION WHEN undefined_table THEN
+        total_artifacts := 0;
+        recent_artifacts := 0;
+    END;
     
     -- Build result
     result := jsonb_build_object(
@@ -131,7 +141,8 @@ BEGIN
         'active_sources', active_sources,
         'total_artifacts', total_artifacts,
         'recent_artifacts', recent_artifacts,
-        'last_check', NOW()
+        'last_check', NOW(),
+        'application_tables_ready', (total_sources > 0 OR total_artifacts > 0)
     );
     
     RETURN result;

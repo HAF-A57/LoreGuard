@@ -36,21 +36,21 @@ const Jobs = () => {
       progress: 67,
       startTime: "2024-09-10 14:30:00",
       estimatedCompletion: "2024-09-10 15:45:00",
-      documentsProcessed: 1247,
-      totalDocuments: 1850,
+      artifactsProcessed: 1247,
+      totalArtifacts: 1850,
       source: "NATO Strategic Communications Centre",
       priority: "high"
     },
     {
       id: 2,
-      name: "Document Evaluation Batch",
+      name: "Artifact Evaluation Batch",
       type: "evaluation",
       status: "running",
       progress: 23,
       startTime: "2024-09-10 14:15:00",
       estimatedCompletion: "2024-09-10 16:20:00",
-      documentsProcessed: 89,
-      totalDocuments: 387,
+      artifactsProcessed: 89,
+      totalArtifacts: 387,
       source: "Multiple Sources",
       priority: "normal"
     },
@@ -62,8 +62,8 @@ const Jobs = () => {
       progress: 100,
       startTime: "2024-09-10 13:00:00",
       completionTime: "2024-09-10 13:45:00",
-      documentsProcessed: 156,
-      totalDocuments: 156,
+      artifactsProcessed: 156,
+      totalArtifacts: 156,
       source: "International Economic Forum",
       priority: "normal"
     },
@@ -75,8 +75,8 @@ const Jobs = () => {
       progress: 45,
       startTime: "2024-09-10 12:30:00",
       failureTime: "2024-09-10 13:15:00",
-      documentsProcessed: 67,
-      totalDocuments: 149,
+      artifactsProcessed: 67,
+      totalArtifacts: 149,
       source: "Cybersecurity Research Institute",
       priority: "normal",
       error: "Connection timeout to source API"
@@ -88,8 +88,8 @@ const Jobs = () => {
       status: "pending",
       progress: 0,
       scheduledTime: "2024-09-10 16:00:00",
-      documentsProcessed: 0,
-      totalDocuments: 23,
+      artifactsProcessed: 0,
+      totalArtifacts: 23,
       source: "Signal Library",
       priority: "low"
     }
@@ -234,7 +234,7 @@ const Jobs = () => {
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span>Progress: {job.documentsProcessed}/{job.totalDocuments} documents</span>
+                      <span>Progress: {job.artifactsProcessed}/{job.totalArtifacts} artifacts</span>
                       <span>{job.progress}%</span>
                     </div>
                     <Progress value={job.progress} className="h-2" />
@@ -303,7 +303,7 @@ const Jobs = () => {
                   <div className="flex items-center space-x-2">
                     {getStatusIcon(job.status)}
                     <span className="text-sm text-muted-foreground">
-                      {job.documentsProcessed} documents processed
+                      {job.artifactsProcessed} artifacts processed
                     </span>
                   </div>
                 </div>
@@ -366,7 +366,7 @@ const Jobs = () => {
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Progress when failed:</span>
-                    <span className="ml-2">{job.documentsProcessed}/{job.totalDocuments} documents ({job.progress}%)</span>
+                    <span className="ml-2">{job.artifactsProcessed}/{job.totalArtifacts} artifacts ({job.progress}%)</span>
                   </div>
                 </div>
               </CardContent>

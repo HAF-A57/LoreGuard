@@ -168,3 +168,47 @@
 .dark .aulendur-hover-transform:hover {
   box-shadow: 0 8px 25px rgba(123, 148, 156, 0.2);
 }
+
+/* Enhanced sidebar navigation contrast */
+.sidebar-nav-button {
+  color: var(--sidebar-foreground) !important;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.sidebar-nav-button:hover {
+  opacity: 1;
+  background-color: var(--sidebar-accent) !important;
+  color: var(--sidebar-accent-foreground) !important;
+}
+
+.sidebar-nav-button.active {
+  opacity: 1;
+  background-color: var(--sidebar-primary) !important;
+  color: var(--sidebar-primary-foreground) !important;
+}
+
+/* AI Assistant header improvements */
+.ai-assistant-header {
+  color: var(--sidebar-foreground) !important;
+}
+
+.ai-assistant-header .text-muted-foreground {
+  color: var(--sidebar-foreground) !important;
+  opacity: 0.7;
+}
+
+/* Logo styling */
+.sidebar-logo {
+  filter: brightness(1.1);
+  transition: filter 0.2s ease;
+}
+
+.sidebar-logo:hover {
+  filter: brightness(1.2);
+}
+
+/* Header improvements */
+.header-title {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}

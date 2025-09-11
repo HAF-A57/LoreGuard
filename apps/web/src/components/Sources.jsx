@@ -23,7 +23,7 @@ const Sources = () => {
       name: "NATO Strategic Communications Centre", 
       status: "Active", 
       lastRun: "2 hours ago", 
-      documents: 1247,
+      artifacts: 1247,
       type: "RSS Feed",
       url: "https://stratcomcoe.org/feed",
       schedule: "Every 4 hours",
@@ -34,7 +34,7 @@ const Sources = () => {
       name: "International Economic Forum", 
       status: "Active", 
       lastRun: "4 hours ago", 
-      documents: 892,
+      artifacts: 892,
       type: "Web Scraper",
       url: "https://ief.org/reports",
       schedule: "Daily at 06:00",
@@ -45,7 +45,7 @@ const Sources = () => {
       name: "Cybersecurity Research Institute", 
       status: "Active", 
       lastRun: "6 hours ago", 
-      documents: 634,
+      artifacts: 634,
       type: "API",
       url: "https://api.cybersec-research.org",
       schedule: "Every 6 hours",
@@ -56,7 +56,7 @@ const Sources = () => {
       name: "Defense Policy Institute", 
       status: "Warning", 
       lastRun: "2 days ago", 
-      documents: 445,
+      artifacts: 445,
       type: "RSS Feed",
       url: "https://defensepolicy.org/feed",
       schedule: "Every 8 hours",
@@ -67,7 +67,7 @@ const Sources = () => {
       name: "Regional Security Council", 
       status: "Paused", 
       lastRun: "1 week ago", 
-      documents: 234,
+      artifacts: 234,
       type: "Web Scraper",
       url: "https://regsec.org/publications",
       schedule: "Daily at 12:00",
@@ -206,7 +206,7 @@ const Sources = () => {
                             <div className="flex items-center space-x-4">
                               <span>{source.type}</span>
                               <span>•</span>
-                              <span>{source.documents} documents</span>
+                              <span>{source.artifacts} artifacts</span>
                               <span>•</span>
                               <span>Health: {source.health}%</span>
                             </div>

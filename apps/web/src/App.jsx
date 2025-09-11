@@ -128,12 +128,11 @@ function App() {
             {sidebarCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
           </Button>
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-aulendur-navy rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">LG</span>
+            <div className="w-10 h-10 bg-aulendur-navy rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-base">LG</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-aulendur-navy">LoreGuard</h1>
-              <p className="text-xs text-aulendur-steel">Facts & Perspectives Harvesting</p>
+              <h1 className="text-xl font-bold text-aulendur-navy tracking-wide header-title">Global Facts & Perspectives Harvesting</h1>
             </div>
           </div>
         </div>
@@ -156,7 +155,7 @@ function App() {
           >
             {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-aulendur-steel font-medium">
             Air Force Wargaming
           </div>
           <Button
@@ -173,6 +172,26 @@ function App() {
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Left Sidebar */}
         <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col`}>
+          {/* Logo Section */}
+          <div className="p-6 border-b border-sidebar-border">
+            <div className="flex items-center justify-center">
+              {!sidebarCollapsed ? (
+                <div className="flex flex-col items-center">
+                  <img 
+                    src="/NameandLogo.png"
+                    alt="LoreGuard - Global Facts & Perspectives Harvesting" 
+                    className="w-76 h-auto max-w-full sidebar-logo"
+                    style={{ filter: 'invert(1)' }}
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 bg-aulendur-navy rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">LG</span>
+                </div>
+              )}
+            </div>
+          </div>
+          
           <nav className="flex-1 p-4">
             <ul className="space-y-2">
               {navigation.map((item) => {
@@ -183,9 +202,9 @@ function App() {
                   <li key={item.id}>
                     <Button
                       variant={isActive ? "default" : "ghost"}
-                      className={`w-full justify-start aulendur-hover-transform ${
+                      className={`w-full justify-start aulendur-hover-transform sidebar-nav-button ${
                         sidebarCollapsed ? 'px-2' : 'px-3'
-                      }`}
+                      } ${isActive ? 'active' : ''}`}
                       onClick={() => setCurrentPage(item.id)}
                     >
                       <Icon className="h-4 w-4" />

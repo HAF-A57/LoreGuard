@@ -146,7 +146,7 @@ const Settings = () => {
                   <div className="space-y-0.5">
                     <div className="text-sm font-medium">Automatic Evaluation</div>
                     <div className="text-xs text-muted-foreground">
-                      Automatically evaluate new documents using active rubric
+                      Automatically evaluate new artifacts using active rubric
                     </div>
                   </div>
                   <Switch
@@ -161,7 +161,7 @@ const Settings = () => {
                   <div className="space-y-0.5">
                     <div className="text-sm font-medium">Batch Processing</div>
                     <div className="text-xs text-muted-foreground">
-                      Process documents in batches for improved efficiency
+                      Process artifacts in batches for improved efficiency
                     </div>
                   </div>
                   <Switch
@@ -176,7 +176,7 @@ const Settings = () => {
                   <div className="space-y-0.5">
                     <div className="text-sm font-medium">Real-time Ingestion</div>
                     <div className="text-xs text-muted-foreground">
-                      Process documents immediately as they are discovered
+                      Process artifacts immediately as they are discovered
                     </div>
                   </div>
                   <Switch
@@ -234,7 +234,7 @@ const Settings = () => {
                 <Brain className="h-5 w-5" />
                 <span>AI Model Configuration</span>
               </CardTitle>
-              <CardDescription>Manage LLM models for document evaluation</CardDescription>
+              <CardDescription>Manage LLM models for artifact evaluation</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
