@@ -34,14 +34,30 @@ class BaseLoreGuardSpider(scrapy.Spider):
         'CONCURRENT_REQUESTS_PER_DOMAIN': 2,
         'AUTOTHROTTLE_ENABLED': True,
         'AUTOTHROTTLE_TARGET_CONCURRENCY': 2.0,
+        'CONCURRENT_REQUESTS': 8,  # Limit concurrent requests for better control
     }
     
-    def __init__(self, source_id: str = None, max_depth: int = 3, *args, **kwargs):
+    def __init__(self, source_id: str = None, max_depth: int = 3, max_artifacts: int = 0, start_urls: str = None, allowed_domains: str = None, job_id: str = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         self.source_id = source_id or getattr(self, 'source_id', 'unknown')
-        self.max_depth = max_depth
-        self.crawl_job_id = kwargs.get('job_id', f"{self.name}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}")
+        self.max_depth = int(max_depth) if max_depth else 3
+        self.max_artifacts = int(max_artifacts) if max_artifacts else 0  # 0 = unlimited
+        self.crawl_job_id = job_id or kwargs.get('job_id', f"{self.name}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}")
+        
+        # Parse start_urls from comma-separated string or use class attribute
+        if start_urls:
+            # Scrapy passes arguments as strings, split comma-separated values
+            self.start_urls = [url.strip() for url in str(start_urls).split(',') if url.strip()]
+        elif not hasattr(self, 'start_urls') or not self.start_urls:
+            self.start_urls = []
+        
+        # Parse allowed_domains from comma-separated string
+        if allowed_domains:
+            parsed_domains = [domain.strip() for domain in str(allowed_domains).split(',') if domain.strip()]
+            self.allowed_domains = parsed_domains if parsed_domains else getattr(self, 'allowed_domains', [])
+        elif not hasattr(self, 'allowed_domains'):
+            self.allowed_domains = []
         
         # Statistics tracking
         self.stats = {
@@ -53,21 +69,24 @@ class BaseLoreGuardSpider(scrapy.Spider):
         
         # Link extractor for finding new URLs
         self.link_extractor = LinkExtractor(
-            allow_domains=getattr(self, 'allowed_domains', []),
+            allow_domains=self.allowed_domains,
             deny_extensions=['jpg', 'jpeg', 'png', 'gif', 'svg', 'ico', 'css', 'js'],
             canonicalize=True,
             unique=True
         )
         
-        logger.info(f"Initialized spider {self.name} for source {self.source_id}")
+        logger.info(f"Initialized spider {self.name} for source {self.source_id} with {len(self.start_urls)} start URLs")
+        logger.info(f"  Max depth: {self.max_depth}, Max artifacts: {self.max_artifacts if self.max_artifacts > 0 else 'unlimited'}")
     
     def start_requests(self) -> Generator[Request, None, None]:
         """Generate initial requests."""
         
         start_urls = getattr(self, 'start_urls', [])
         if not start_urls:
-            logger.error(f"No start URLs configured for spider {self.name}")
+            logger.error(f"No start URLs configured for spider {self.name} (source: {self.source_id})")
             return
+        
+        logger.info(f"Starting crawl with {len(start_urls)} start URLs for source {self.source_id}")
         
         for url in start_urls:
             yield Request(
@@ -108,6 +127,14 @@ class BaseLoreGuardSpider(scrapy.Spider):
             yield from self.process_document(response)
             return
         
+        # Safety check: ensure response can be parsed as text
+        try:
+            # Test if we can use CSS selectors (will fail if content isn't text)
+            _ = response.css('html').get()
+        except Exception as e:
+            logger.warning(f"Cannot parse response as HTML: {e}. Skipping content extraction for {response.url}")
+            return
+        
         # Extract main content
         content_selectors = [
             'article',
@@ -121,11 +148,15 @@ class BaseLoreGuardSpider(scrapy.Spider):
         
         text_content = ""
         for selector in content_selectors:
-            content = response.css(selector).get()
-            if content:
-                text_content = response.css(selector + ' ::text').getall()
-                text_content = ' '.join(text_content).strip()
-                break
+            try:
+                content = response.css(selector).get()
+                if content:
+                    text_content = response.css(selector + ' ::text').getall()
+                    text_content = ' '.join(text_content).strip()
+                    break
+            except Exception as e:
+                logger.warning(f"Error extracting content with selector {selector}: {e}")
+                continue
         
         if not text_content:
             # Fallback to body text
@@ -137,6 +168,13 @@ class BaseLoreGuardSpider(scrapy.Spider):
     
     def process_document(self, response: Response, text_content: str = None) -> Generator:
         """Process a document and extract metadata."""
+        
+        # Check max_artifacts limit and close spider if reached
+        if self.max_artifacts > 0 and self.stats['documents_found'] >= self.max_artifacts:
+            logger.info(f"Reached max_artifacts limit ({self.max_artifacts}). Closing spider.")
+            # Use Scrapy's close spider mechanism
+            from scrapy.exceptions import CloseSpider
+            raise CloseSpider(f'max_artifacts_reached_{self.max_artifacts}')
         
         try:
             # Create artifact item

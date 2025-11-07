@@ -6,8 +6,25 @@ Centralized configuration management using Pydantic settings.
 
 import os
 from typing import List, Optional, Union
-from pydantic import BaseSettings, validator, Field
+from pydantic import validator, Field
+from pydantic_settings import BaseSettings
+from pathlib import Path
 
+# Project root: config.py -> core -> app -> svc-normalize -> apps -> LoreGuard (5 levels up)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+
+# Load .env.detected manually before creating Settings instance
+# This ensures LOREGUARD_HOST_IP is available for default value calculations
+env_detected_path = PROJECT_ROOT / ".env.detected"
+if env_detected_path.exists():
+    with open(env_detected_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                # Only set if not already in environment
+                if key not in os.environ:
+                    os.environ[key] = value
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -32,32 +49,81 @@ class Settings(BaseSettings):
     # =============================================================================
     
     # CORS origins
-    BACKEND_CORS_ORIGINS: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"],
+    _default_cors_origins = [
+        f"http://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:3000",
+        f"http://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:5173",
+        f"http://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:6060",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:6060"
+    ]
+    
+    BACKEND_CORS_ORIGINS: Union[str, List[str]] = Field(
+        default_factory=lambda: ",".join(_default_cors_origins),
         env="BACKEND_CORS_ORIGINS"
     )
     
     @validator("BACKEND_CORS_ORIGINS", pre=True)
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        _defaults = [
+            f"http://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:3000",
+            f"http://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:5173",
+            f"http://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:6060",
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:6060"
+        ]
+        if v is None:
+            return _defaults
+        if isinstance(v, list):
             return v
-        raise ValueError(v)
+        if isinstance(v, str):
+            # Handle comma-separated string
+            if v.startswith("["):
+                # Try to parse as JSON array
+                import json
+                try:
+                    return json.loads(v)
+                except:
+                    pass
+            # Split comma-separated string
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return _defaults
     
     # Allowed hosts
-    ALLOWED_HOSTS: List[str] = Field(
-        default=["localhost", "127.0.0.1", "0.0.0.0"],
+    ALLOWED_HOSTS: Union[str, List[str]] = Field(
+        default_factory=lambda: "*",  # Allow all hosts in development
         env="ALLOWED_HOSTS"
     )
     
     @validator("ALLOWED_HOSTS", pre=True)
-    def assemble_allowed_hosts(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
+    def assemble_allowed_hosts(cls, v: Union[str, List[str]]) -> List[str]:
+        _defaults = [
+            os.getenv('LOREGUARD_HOST_IP', 'localhost'),
+            "localhost",
+            "127.0.0.1",
+            "0.0.0.0",
+            "*"  # Allow all hosts in development
+        ]
+        if v is None:
+            return _defaults
+        if isinstance(v, list):
             return v
-        raise ValueError(v)
+        if isinstance(v, str):
+            # Handle "*" as allow all
+            if v == "*":
+                return ["*"]
+            # Handle comma-separated string
+            if v.startswith("["):
+                # Try to parse as JSON array
+                import json
+                try:
+                    return json.loads(v)
+                except:
+                    pass
+            # Split comma-separated string
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return _defaults
     
     # =============================================================================
     # DATABASE CONFIGURATION
@@ -65,7 +131,10 @@ class Settings(BaseSettings):
     
     # PostgreSQL database
     DATABASE_URL: str = Field(
-        default="postgresql://loreguard:loreguard123@localhost:5432/loreguard",
+        default_factory=lambda: os.getenv(
+            "DATABASE_URL",
+            f"postgresql://loreguard:loreguard123@{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:5432/loreguard"
+        ),
         env="DATABASE_URL"
     )
     
@@ -78,7 +147,10 @@ class Settings(BaseSettings):
     # REDIS CONFIGURATION
     # =============================================================================
     
-    REDIS_URL: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
+    REDIS_URL: str = Field(
+        default=f"redis://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:6379/0",
+        env="REDIS_URL"
+    )
     REDIS_TIMEOUT: int = Field(default=5, env="REDIS_TIMEOUT")
     
     # =============================================================================
@@ -86,10 +158,13 @@ class Settings(BaseSettings):
     # =============================================================================
     
     # MinIO/S3 configuration
-    S3_ENDPOINT_URL: Optional[str] = Field(default="http://localhost:9000", env="S3_ENDPOINT_URL")
-    S3_ACCESS_KEY_ID: str = Field(default="minioadmin", env="S3_ACCESS_KEY_ID")
-    S3_SECRET_ACCESS_KEY: str = Field(default="minioadmin", env="S3_SECRET_ACCESS_KEY")
-    S3_BUCKET_NAME: str = Field(default="loreguard-documents", env="S3_BUCKET_NAME")
+    S3_ENDPOINT_URL: Optional[str] = Field(
+        default=f"http://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:9000",
+        env="S3_ENDPOINT_URL"
+    )
+    S3_ACCESS_KEY_ID: str = Field(default="loreguard", env="S3_ACCESS_KEY_ID")  # From docker-compose
+    S3_SECRET_ACCESS_KEY: str = Field(default="minio_password_here", env="S3_SECRET_ACCESS_KEY")  # From docker-compose
+    S3_BUCKET_NAME: str = Field(default="loreguard-artifacts", env="S3_BUCKET_NAME")
     S3_REGION: str = Field(default="us-east-1", env="S3_REGION")
     
     # =============================================================================
@@ -154,6 +229,27 @@ class Settings(BaseSettings):
         env="SUPPORTED_LANGUAGES"
     )
     
+    @validator("SUPPORTED_LANGUAGES", pre=True)
+    def assemble_supported_languages(cls, v) -> List[str]:
+        if v is None:
+            return ["en", "fr", "de", "es", "ru", "zh", "ar", "pt", "it", "ja"]
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            # Handle comma-separated string
+            if "," in v:
+                return [i.strip() for i in v.split(",") if i.strip()]
+            # Handle JSON list string
+            if v.startswith("[") and v.endswith("]"):
+                import json
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            # Single value
+            return [v.strip()] if v.strip() else []
+        raise ValueError(f"Invalid SUPPORTED_LANGUAGES format: {v}")
+    
     # =============================================================================
     # CONTENT PROCESSING CONFIGURATION
     # =============================================================================
@@ -194,8 +290,14 @@ class Settings(BaseSettings):
     # =============================================================================
     
     # Other LoreGuard services
-    API_SERVICE_URL: str = Field(default="http://localhost:8000", env="API_SERVICE_URL")
-    INGESTION_SERVICE_URL: str = Field(default="http://localhost:8003", env="INGESTION_SERVICE_URL")
+    API_SERVICE_URL: str = Field(
+        default=f"http://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:8000",
+        env="API_SERVICE_URL"
+    )
+    INGESTION_SERVICE_URL: str = Field(
+        default=f"http://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:8003",
+        env="INGESTION_SERVICE_URL"
+    )
     
     # =============================================================================
     # DEVELOPMENT SETTINGS
@@ -210,8 +312,15 @@ class Settings(BaseSettings):
     TEST_DATABASE_URL: Optional[str] = Field(default=None, env="TEST_DATABASE_URL")
     
     class Config:
-        env_file = ".env"
+        # Look for .env files in project root first, then locally
+        env_file = [
+            str(PROJECT_ROOT / ".env.detected"),  # Project root .env.detected
+            str(PROJECT_ROOT / ".env"),           # Project root .env
+            ".env.detected",                      # Local .env.detected
+            ".env"                                # Local .env
+        ]
         case_sensitive = True
+        extra = "ignore"  # Ignore extra fields from .env files
 
 
 # Create settings instance

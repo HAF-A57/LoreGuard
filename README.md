@@ -10,8 +10,8 @@ LoreGuard is a companion system to the Multi-Agent Generative Engine (MAGE) desi
 
 - **Ubuntu 22.04 LTS** (recommended development environment)
 - **Docker** and **Docker Compose** v2.0+
-- **Node.js** 18+ and **npm**
-- **Python** 3.11+
+- **Node.js** 18+ and **npm** (for frontend development)
+- **Python** 3.11+ (for local development, optional)
 - **Git**
 - **8GB RAM minimum** (16GB recommended)
 - **50GB free disk space**
@@ -22,105 +22,68 @@ LoreGuard is a companion system to the Multi-Agent Generative Engine (MAGE) desi
 # Clone and start LoreGuard
 git clone https://github.com/HAF-A57/LoreGuard.git
 cd LoreGuard
-./scripts/dev/quick-start.sh
+make quick-start
 ```
 
-This script will:
-- ✅ Install all dependencies
-- ✅ Set up environment variables
-- ✅ Build and start all containers
-- ✅ Initialize databases with sample data
-- ✅ Create default admin user
-- ✅ Start development servers
+This single command will:
+- ✅ Automatically detect your network IP address
+- ✅ Configure environment variables
+- ✅ Start all infrastructure containers (PostgreSQL, Redis, MinIO)
+- ✅ Initialize database schema and create default admin user
+- ✅ Build and start all backend services (API, Normalize, AI Assistant, Ingestion)
+- ✅ Start frontend development server with hot reload
 
-**Default Login:**
-- **URL**: http://localhost:6060
-- **Username**: admin@airforcewargaming.com  
-- **Password**: LoreGuard2024!
+**Access Your Application:**
+- **Frontend**: http://[YOUR_IP]:6060 (IP shown after startup)
+- **API Docs**: http://[YOUR_IP]:8000/docs
+- **Default Login**:
+  - Email: `admin@loreguard.local`
+  - Password: `admin`
 
-**Note**: The application now uses "artifact" terminology throughout instead of "document" for better consistency.
+**Note**: Backend services run in Docker containers for consistency, while the frontend runs locally for optimal hot-reload development experience.
 
-## 📋 Manual Setup (Step by Step)
+## 📋 Alternative Setup Options
 
-### 1. System Dependencies
+### Infrastructure Only
+
+If you only need to start the infrastructure services (database, Redis, MinIO):
 
 ```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
-newgrp docker
-
-# Install Docker Compose
-sudo apt install docker-compose-plugin
-
-# Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Install Python dependencies
-sudo apt install -y python3.11 python3.11-venv python3-pip
+make quick-start-infra
 ```
 
-### 2. Clone and Configure
+This is useful if you want to run application services locally for development.
+
+### Manual Service Management
+
+For more control over individual services:
 
 ```bash
-# Clone repository
-git clone https://github.com/HAF-A57/LoreGuard.git
-cd LoreGuard
+# Start infrastructure first
+make quick-start-infra
 
-# Copy environment template
-cp .env.template .env
-
-# Edit environment variables (optional)
-nano .env
+# Then start individual services as needed
+make start-api       # Backend API (port 8000)
+make start-normalize # Normalize service (port 8001)
+make start-assistant # AI Assistant (port 8002)
+make start-web       # Frontend (port 6060)
 ```
 
-### 3. Start Infrastructure Services
+### Verify Installation
+
+After starting services, verify everything is working:
 
 ```bash
-# Start databases and core services
-docker-compose -f docker-compose.dev.yml up -d postgres redis minio
+# Comprehensive health check
+make health-check
 
-# Wait for services to be ready
-./scripts/dev/wait-for-services.sh
-
-# Initialize databases
-./scripts/dev/init-databases.sh
+# Expected output shows:
+# ✅ All infrastructure services healthy
+# ✅ All application services responding
+# ✅ Container status and port availability
 ```
 
-### 4. Start Application Services
-
-```bash
-# Start backend API
-cd apps/svc-api
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m app.main &
-
-# Start frontend (new terminal)
-cd apps/web
-npm install
-npm run dev &
-```
-
-### 5. Verify Installation
-
-```bash
-# Check all services are running
-./scripts/dev/health-check.sh
-
-# Expected output:
-# ✅ PostgreSQL: Connected
-# ✅ Redis: Connected  
-# ✅ MinIO: Connected
-# ✅ Backend API: Healthy
-# ✅ Frontend: Running on http://localhost:6060
-```
+**Note**: The `make quick-start` command handles everything automatically. Manual setup is only needed for advanced development scenarios.
 
 ## 🏗️ Architecture Overview
 
@@ -156,7 +119,7 @@ Based on the [Final Technology Roadmap](./Planning/FinalTechnologyRoadmap.md), t
 #### **Frontend Application**
 - **Three-Pane Layout**: Navigation + Content + AI Assistant
 - **8 Complete Pages**: Dashboard, Artifacts, Sources, Library, Evaluations, Jobs, Analytics, Settings
-- **AI Assistant Integration**: Context-aware chatbot with LoreGuard knowledge
+- **AI Assistant Integration**: Real-time context-aware chatbot with chat history and tool calling
 - **Authentication Flow**: Login system with loading screens
 - **Responsive Design**: Mobile-friendly with dark/light mode
 - **Professional UI**: Air Force Wargaming branding with official LoreGuard logo
@@ -165,6 +128,8 @@ Based on the [Final Technology Roadmap](./Planning/FinalTechnologyRoadmap.md), t
 
 #### **Backend Services**
 - **REST API**: FastAPI with OpenAPI documentation
+- **Document Processing**: unstructured.io integration for text extraction
+- **AI Assistant**: Context-aware chatbot with tool calling and chat history
 - **Database Models**: Complete schema for all LoreGuard entities
 - **Real CRUD Operations**: Tested with actual data persistence
 - **Configuration Management**: Environment-based settings
@@ -199,76 +164,94 @@ Based on the [Final Technology Roadmap](./Planning/FinalTechnologyRoadmap.md), t
 
 ## 🛠️ Development Commands
 
+All development commands are available through the Makefile. Run `make help` to see all available commands.
+
+### Essential Commands
+
+```bash
+# Complete setup (infrastructure + all services)
+make quick-start
+
+# Infrastructure only (database, Redis, MinIO)
+make quick-start-infra
+
+# Check service health
+make health-check
+
+# Stop all application services
+make stop-services
+
+# View container logs
+make logs              # Last 100 lines
+make logs-follow       # Streaming (Ctrl+C to exit)
+```
+
 ### Container Management
 
 ```bash
-# Start all services
-docker-compose -f docker-compose.dev.yml up -d
+# Start all containers
+make up
 
-# Stop all services  
-docker-compose -f docker-compose.dev.yml down
+# Stop all containers  
+make down
 
-# Rebuild containers
-docker-compose -f docker-compose.dev.yml up -d --build
+# Restart containers
+make restart
 
-# View logs
-docker-compose -f docker-compose.dev.yml logs -f [service-name]
+# Rebuild service containers (after code changes)
+make rebuild-services
 
-# Reset everything (WARNING: destroys data)
-./scripts/dev/reset-environment.sh
+# Clean up (interactive prompt)
+make clean
+
+# Force cleanup without prompt
+make clean-force
 ```
 
 ### Database Operations
 
 ```bash
-# Initialize databases
-./scripts/dev/init-databases.sh
+# Initialize database schema
+make init-db
 
-# Load sample data
-./scripts/dev/load-sample-data.sh
+# Reset database (interactive, WARNING: destroys data)
+make reset-db
 
-# Backup database
-./scripts/dev/backup-database.sh
-
-# Restore database
-./scripts/dev/restore-database.sh [backup-file]
-
-# Run migrations
-cd apps/svc-api && alembic upgrade head
+# Force reset without prompt
+make reset-db-force
 ```
 
-### Development Servers
+### Local Development Services
+
+For local development with hot reload:
 
 ```bash
-# Start backend API (development mode)
-cd apps/svc-api
-source venv/bin/activate
-python -m app.main
-
-# Start frontend (development mode)
-cd apps/web
-npm run dev
-
-# Start both with hot reload
-./scripts/dev/start-dev-servers.sh
+# Start individual services locally
+make start-api       # Backend API (port 8000)
+make start-normalize # Normalize service (port 8001)
+make start-assistant # AI Assistant (port 8002)
+make start-web       # Frontend (port 6060)
 ```
 
-### Testing and Validation
+**Note**: By default, backend services run in containers. Use these commands only if you need local development with hot reload.
+
+### Development Tools
 
 ```bash
-# Run backend tests
-cd apps/svc-api
-python -m pytest tests/
+# Run tests
+make test
 
-# Run frontend tests
-cd apps/web
-npm test
+# Format code (requires black and prettier)
+make format
 
-# Run integration tests
-./scripts/dev/run-integration-tests.sh
+# Lint code (requires flake8 and eslint)
+make lint
 
-# Validate API endpoints
-./scripts/dev/test-api-endpoints.sh
+# Check environment configuration
+make check-env
+
+# Detect and configure IP address
+make detect-ip
 ```
 
 ## 📁 Project Structure
@@ -277,39 +260,41 @@ npm test
 LoreGuard/
 ├── apps/
 │   ├── web/                    # React frontend application
-│   │   ├── src/
+│   │   ├── src/                # Source code
 │   │   │   ├── components/     # UI components (8 pages + AI assistant)
-│   │   │   ├── App.jsx         # Main application component
-│   │   │   └── App.css         # Aulendur design system styles
+│   │   │   └── ...
 │   │   ├── package.json        # Frontend dependencies
 │   │   └── vite.config.js      # Build configuration
 │   │
-│   └── svc-api/                # FastAPI backend service
-│       ├── app/
-│       │   ├── api/v1/         # REST API endpoints
-│       │   ├── models/         # SQLAlchemy database models
-│       │   ├── schemas/        # Pydantic request/response schemas
-│       │   ├── db/             # Database configuration
-│       │   ├── core/           # Configuration and settings
-│       │   └── main.py         # FastAPI application entry point
-│       ├── requirements.txt    # Python dependencies
-│       └── .env               # Environment configuration
+│   ├── svc-api/                # FastAPI backend service
+│   │   ├── app/                # Application code
+│   │   │   ├── api/v1/         # REST API endpoints
+│   │   │   ├── models/         # SQLAlchemy database models
+│   │   │   ├── schemas/        # Pydantic request/response schemas
+│   │   │   └── ...
+│   │   ├── Dockerfile          # Container definition
+│   │   └── requirements.txt   # Python dependencies
+│   │
+│   ├── svc-normalize/          # Document processing service
+│   ├── svc-assistant/          # AI Assistant service
+│   └── svc-ingestion/          # Scrapy web crawler service
 │
 ├── scripts/
+│   ├── detect-ip.sh            # IP detection script
 │   └── dev/                    # Development automation scripts
-│       ├── quick-start.sh      # One-command setup
-│       ├── init-databases.sh   # Database initialization
+│       ├── init-databases.sh  # Database initialization
 │       ├── health-check.sh     # Service health validation
-│       └── reset-environment.sh # Complete environment reset
+│       ├── start-services.sh   # Service startup automation
+│       └── ...
 │
 ├── Planning/                   # Comprehensive planning documentation
 │   ├── FinalTechnologyRoadmap.md
 │   ├── EvaluationPipelinePlan.md
-│   └── [18 other planning documents]
+│   └── [other planning documents]
 │
 ├── docker-compose.dev.yml      # Development container orchestration
+├── Makefile                    # Development commands
 ├── .env.template              # Environment variable template
-├── .gitignore                 # Git ignore patterns
 └── README.md                  # This file
 ```
 
@@ -317,181 +302,146 @@ LoreGuard/
 
 ### Environment Variables
 
-Key configuration options in `.env`:
+LoreGuard uses automatic IP detection via `make detect-ip`, which creates `.env.detected` with your network IP. For manual configuration, you can create a `.env` file from `.env.template`.
+
+**Key Configuration Options:**
 
 ```bash
 # Database Configuration
-DATABASE_URL=postgresql://loreguard:password@localhost:5432/loreguard
 POSTGRES_PASSWORD=secure_password_here
 
 # Redis Configuration  
-REDIS_URL=redis://localhost:6379
 REDIS_PASSWORD=redis_password_here
 
 # MinIO Object Storage
-MINIO_ENDPOINT=http://localhost:9000
 MINIO_ACCESS_KEY=loreguard
 MINIO_SECRET_KEY=minio_password_here
 
-# API Configuration
-API_HOST=0.0.0.0
-API_PORT=8000
-CORS_ORIGINS=http://localhost:6060
-
-# Frontend Configuration
-VITE_API_URL=http://localhost:8000
-
-# Security
-JWT_SECRET_KEY=your_jwt_secret_key_here
-ADMIN_EMAIL=admin@airforcewargaming.com
-ADMIN_PASSWORD=LoreGuard2024!
+# LLM Configuration (for AI Assistant)
+OPENAI_API_KEY=your_openai_api_key
+DEFAULT_LLM_MODEL=gpt-4
 ```
+
+**Note**: Most configuration is handled automatically. The `make quick-start` command detects your IP and configures all services accordingly. Manual `.env` configuration is only needed for advanced scenarios.
 
 ### Service Ports
 
-| Service | Port | URL | Purpose |
-|---------|------|-----|---------|
-| Frontend | 6060 | http://localhost:6060 | React development server (Vite) |
-| Backend API | 8000 | http://localhost:8000 | FastAPI REST API |
-| PostgreSQL | 5432 | localhost:5432 | Database server |
-| Redis | 6379 | localhost:6379 | Cache and message broker |
-| MinIO | 9000 | http://localhost:9000 | Object storage API |
-| MinIO Console | 9001 | http://localhost:9001 | Storage management UI |
+| Service | Port | URL | Purpose | Deployment |
+|---------|------|-----|---------|------------|
+| Frontend | 6060 | http://[YOUR_IP]:6060 | React development server (Vite) | Local (hot reload) |
+| Backend API | 8000 | http://[YOUR_IP]:8000 | FastAPI REST API | Containerized |
+| Normalize Service | 8001 | http://[YOUR_IP]:8001 | Document processing service | Containerized |
+| AI Assistant | 8002 | http://[YOUR_IP]:8002 | Context-aware chatbot service | Containerized |
+| Ingestion Service | - | - | Scrapy web crawler | Containerized (invoked via API) |
+| PostgreSQL | 5432 | [YOUR_IP]:5432 | Database server | Containerized |
+| Redis | 6379 | [YOUR_IP]:6379 | Cache and message broker | Containerized |
+| MinIO API | 9000 | http://[YOUR_IP]:9000 | Object storage API | Containerized |
+| MinIO Console | 9001 | http://[YOUR_IP]:9001 | Storage management UI | Containerized |
 
-## 🐳 Container Services
+**Note**: Replace `[YOUR_IP]` with your detected IP address (shown after `make quick-start`).
 
-### Core Infrastructure
+## 🐳 Container Architecture
 
-```yaml
-# PostgreSQL Database
-postgres:
-  image: postgres:15
-  environment:
-    POSTGRES_DB: loreguard
-    POSTGRES_USER: loreguard
-    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  volumes:
-    - postgres_data:/var/lib/postgresql/data
-    - ./scripts/dev/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+LoreGuard uses Docker Compose for orchestration. All backend services run in containers for consistency, while the frontend runs locally for optimal development experience.
 
-# Redis Cache
-redis:
-  image: redis:7-alpine
-  command: redis-server --requirepass ${REDIS_PASSWORD}
-  volumes:
-    - redis_data:/data
+### Infrastructure Services
 
-# MinIO Object Storage
-minio:
-  image: minio/minio:latest
-  environment:
-    MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
-    MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
-  volumes:
-    - minio_data:/data
-  command: server /data --console-address ":9001"
-```
+- **PostgreSQL** (postgres:15) - Primary database
+- **Redis** (redis:7-alpine) - Cache and message broker
+- **MinIO** (minio/minio:latest) - S3-compatible object storage
 
 ### Application Services
 
-```yaml
-# Backend API
-loreguard-api:
-  build: ./apps/svc-api
-  environment:
-    DATABASE_URL: postgresql://loreguard:${POSTGRES_PASSWORD}@postgres:5432/loreguard
-    REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-    MINIO_ENDPOINT: http://minio:9000
-  depends_on:
-    - postgres
-    - redis
-    - minio
+- **loreguard-api** - FastAPI backend service (port 8000)
+- **loreguard-normalize** - Document processing service (port 8001)
+- **loreguard-assistant** - AI Assistant service (port 8002)
+- **loreguard-ingestion** - Scrapy web crawler (invoked via API)
 
-# Frontend Web App
-loreguard-web:
-  build: ./apps/web
-  environment:
-    VITE_API_URL: http://localhost:8000
-  depends_on:
-    - loreguard-api
-```
+All services are defined in `docker-compose.dev.yml` and managed via Makefile commands.
 
 ## 🚨 Troubleshooting
 
-### Common Issues
+### Quick Diagnostics
 
-#### **Port Already in Use**
 ```bash
-# Find process using port
-sudo lsof -i :6060
-sudo lsof -i :8000
+# Comprehensive health check
+make health-check
 
-# Kill process
-sudo kill -9 [PID]
+# View container status
+docker compose -f docker-compose.dev.yml ps
 
-# Or use different ports in .env
+# View logs for specific service
+make logs | grep [service-name]
 ```
 
-#### **Database Connection Failed**
+### Common Issues
+
+#### **Services Not Starting**
+
 ```bash
-# Check PostgreSQL is running
-docker-compose -f docker-compose.dev.yml ps postgres
+# Check if containers are running
+docker compose -f docker-compose.dev.yml ps
 
-# Check database logs
-docker-compose -f docker-compose.dev.yml logs postgres
+# Check logs for errors
+make logs
 
-# Reinitialize database
-./scripts/dev/init-databases.sh
+# Restart services
+make restart
+
+# If issues persist, rebuild containers
+make rebuild-services
+```
+
+#### **Port Already in Use**
+
+```bash
+# Stop conflicting services
+make stop-services
+
+# Or find and kill process using port
+sudo lsof -i :6060  # Frontend
+sudo lsof -i :8000  # API
+```
+
+#### **Database Issues**
+
+```bash
+# Check database connection
+make health-check
+
+# Reinitialize database (WARNING: destroys data)
+make reset-db-force
+
+# Or just recreate schema
+make init-db
 ```
 
 #### **Frontend Build Errors**
+
 ```bash
-# Clear node modules and reinstall
+# Clear and reinstall dependencies
 cd apps/web
 rm -rf node_modules package-lock.json
 npm install
-
-# Clear Vite cache
-npm run dev -- --force
 ```
 
-#### **Backend Import Errors**
-```bash
-# Recreate virtual environment
-cd apps/svc-api
-rm -rf venv
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-### Health Check Commands
+#### **Container Build Failures**
 
 ```bash
-# Check all service health
-./scripts/dev/health-check.sh
+# Rebuild all services from scratch
+make rebuild-services
 
-# Test API endpoints
-curl http://localhost:8000/health
-curl http://localhost:8000/api/v1/test/ping
-
-# Test database connection
-curl http://localhost:8000/api/v1/test/db-test
-
-# Test frontend
-curl http://localhost:6060
+# Check Docker resources
+docker system df
+docker system prune  # Clean up unused resources
 ```
 
-### Reset Environment
+### Reset Everything
 
 ```bash
 # Complete reset (WARNING: destroys all data)
-./scripts/dev/reset-environment.sh
-
-# Selective reset
-docker-compose -f docker-compose.dev.yml down -v  # Remove volumes
-docker system prune -f                            # Clean Docker
-./scripts/dev/quick-start.sh                      # Restart fresh
+make clean-force
+make quick-start
 ```
 
 ## 📚 Documentation
@@ -508,9 +458,13 @@ Comprehensive planning documentation is available in the [`Planning/`](./Plannin
 
 ### API Documentation
 
-- **Interactive API Docs**: http://localhost:8000/docs (Swagger UI)
-- **Alternative API Docs**: http://localhost:8000/redoc (ReDoc)
-- **OpenAPI Schema**: http://localhost:8000/openapi.json
+After starting services, access API documentation at:
+
+- **Interactive API Docs**: http://[YOUR_IP]:8000/docs (Swagger UI)
+- **Alternative API Docs**: http://[YOUR_IP]:8000/redoc (ReDoc)
+- **OpenAPI Schema**: http://[YOUR_IP]:8000/openapi.json
+
+Replace `[YOUR_IP]` with your detected IP address (shown after `make quick-start`).
 
 ### Development Guides
 
@@ -527,25 +481,31 @@ Comprehensive planning documentation is available in the [`Planning/`](./Plannin
    git checkout -b feature/your-feature-name
    ```
 
-2. **Make Changes**
-   - Follow existing code patterns
-   - Add tests for new functionality
-   - Update documentation as needed
-
-3. **Test Changes**
+2. **Start Development Environment**
    ```bash
-   ./scripts/dev/run-tests.sh
-   ./scripts/dev/health-check.sh
+   make quick-start
    ```
 
-4. **Commit and Push**
+3. **Make Changes**
+   - Follow existing code patterns
+   - Backend services auto-reload in containers
+   - Frontend has hot reload enabled
+
+4. **Test Changes**
+   ```bash
+   make health-check    # Verify services
+   make test            # Run tests
+   make lint            # Check code quality
+   ```
+
+5. **Commit and Push**
    ```bash
    git add .
    git commit -m "feat: add your feature description"
    git push origin feature/your-feature-name
    ```
 
-5. **Create Pull Request**
+6. **Create Pull Request**
    - Describe changes and testing performed
    - Reference any related issues
    - Request review from team members
@@ -566,11 +526,12 @@ Comprehensive planning documentation is available in the [`Planning/`](./Plannin
 
 ### Getting Help
 
-1. **Check Documentation**: Review planning docs and README sections
-2. **Run Health Checks**: Use `./scripts/dev/health-check.sh` to diagnose issues
-3. **Review Logs**: Check container logs for error details
-4. **Search Issues**: Look for similar problems in project issues
-5. **Ask Questions**: Create detailed issue reports with reproduction steps
+1. **Check Documentation**: Review this README and planning docs in `Planning/` directory
+2. **Run Health Checks**: Use `make health-check` to diagnose issues
+3. **Review Logs**: Use `make logs` or `make logs-follow` to check container logs
+4. **Check Service Status**: Use `docker compose -f docker-compose.dev.yml ps`
+5. **Search Issues**: Look for similar problems in project issues
+6. **Ask Questions**: Create detailed issue reports with reproduction steps
 
 ### Reporting Issues
 

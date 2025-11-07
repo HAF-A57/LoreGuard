@@ -28,10 +28,10 @@ class Artifact(Base):
     
     # Relationships
     source = relationship("Source", backref="artifacts")
-    document_metadata = relationship("DocumentMetadata", back_populates="artifact", uselist=False)
-    clarification = relationship("Clarification", back_populates="artifact", uselist=False)
-    evaluations = relationship("Evaluation", back_populates="artifact")
-    library_items = relationship("LibraryItem", back_populates="artifact")
+    document_metadata = relationship("DocumentMetadata", back_populates="artifact", uselist=False, cascade="all, delete-orphan")
+    clarification = relationship("Clarification", back_populates="artifact", uselist=False, cascade="all, delete-orphan")
+    evaluations = relationship("Evaluation", back_populates="artifact", cascade="all, delete-orphan")
+    library_items = relationship("LibraryItem", back_populates="artifact", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Artifact(id='{self.id}', uri='{self.uri[:50]}...', hash='{self.content_hash[:8]}')>"
@@ -56,7 +56,7 @@ class DocumentMetadata(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    artifact = relationship("Artifact", back_populates="metadata")
+    artifact = relationship("Artifact", back_populates="document_metadata")
     
     def __repr__(self):
         return f"<DocumentMetadata(artifact_id='{self.artifact_id}', title='{self.title[:50] if self.title else None}')>"

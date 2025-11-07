@@ -163,7 +163,18 @@ class ContentHashPipeline:
         """Generate content hash for artifacts."""
         
         if isinstance(item, ArtifactItem) and not item.get('content_hash'):
-            content = item.get('raw_content', b'') or item.get('text_content', '').encode('utf-8')
+            # Get content as bytes for hashing
+            content = item.get('raw_content')
+            if content and isinstance(content, bytes):
+                # Already bytes
+                pass
+            elif item.get('text_content'):
+                # Convert text to bytes
+                content = item.get('text_content', '').encode('utf-8')
+            else:
+                # Fallback to empty bytes
+                content = b''
+            
             content_hash = hashlib.sha256(content).hexdigest()
             item['content_hash'] = content_hash
             
@@ -188,14 +199,8 @@ class MetadataExtractionPipeline:
     def _extract_artifact_metadata(self, item: ArtifactItem, spider) -> ArtifactItem:
         """Extract metadata from artifact content."""
         
-        # Detect language
-        if item.get('text_content') and not item.get('language'):
-            try:
-                detected_lang = langdetect.detect(item['text_content'][:1000])
-                item['language'] = detected_lang
-                logger.debug(f"Detected language for {item['uri']}: {detected_lang}")
-            except:
-                item['language'] = 'unknown'
+        # Note: Language detection removed - ArtifactItem doesn't have language field
+        # Language detection happens during normalization phase
         
         # Determine MIME type
         if not item.get('mime_type'):
@@ -218,9 +223,8 @@ class MetadataExtractionPipeline:
         if not item.get('discovered_at'):
             item['discovered_at'] = datetime.utcnow().isoformat()
         
-        # Extract domain information
-        parsed_uri = urlparse(item['uri'])
-        item['domain'] = parsed_uri.netloc
+        # Note: domain can be extracted from URI when needed, no need to store separately
+        # as ArtifactItem doesn't have a domain field
         
         return item
 
@@ -236,6 +240,14 @@ class DatabaseStoragePipeline:
         self.Session = None
         self.stored_count = 0
         self.error_count = 0
+        # Ensure models can be imported by adding svc-api/app to path
+        import sys
+        import pathlib
+        # Get the apps directory (parent of svc-ingestion)
+        apps_dir = pathlib.Path(__file__).resolve().parent.parent.parent
+        svc_api_app_path = apps_dir / 'svc-api' / 'app'
+        if str(svc_api_app_path) not in sys.path:
+            sys.path.insert(0, str(svc_api_app_path))
         
     @classmethod
     def from_crawler(cls, crawler):
@@ -287,8 +299,17 @@ class DatabaseStoragePipeline:
         session = self.Session()
         
         try:
-            # Import here to avoid circular imports
-            from app.models import Artifact
+            # Import models from svc-api service
+            # Add svc-api/app directory to path to access models
+            import sys
+            import pathlib
+            # Get the apps directory (parent of svc-ingestion)
+            apps_dir = pathlib.Path(__file__).resolve().parent.parent.parent
+            svc_api_app_path = apps_dir / 'svc-api' / 'app'
+            if str(svc_api_app_path) not in sys.path:
+                sys.path.insert(0, str(svc_api_app_path))
+            from models.artifact import Artifact, DocumentMetadata
+            from db.database import Base  # Ensure Base is imported for models
             
             # Check if artifact already exists
             existing = session.query(Artifact).filter_by(content_hash=item['content_hash']).first()
@@ -308,10 +329,13 @@ class DatabaseStoragePipeline:
             session.add(artifact)
             session.commit()
             
-            # Store the generated ID back in the item
-            item['artifact_id'] = artifact.id
+            # Note: We don't store artifact_id back in item as ArtifactItem doesn't have that field
+            # The artifact.id is already persisted in the database
             
             logger.debug(f"Stored artifact: {item['uri']} (ID: {artifact.id})")
+            
+            # Trigger normalization service (async, don't block on errors)
+            self._trigger_normalization(artifact.id, spider)
             
         except Exception as e:
             session.rollback()
@@ -319,13 +343,61 @@ class DatabaseStoragePipeline:
         finally:
             session.close()
     
+    def _trigger_normalization(self, artifact_id: str, spider):
+        """Trigger normalization service for newly stored artifact"""
+        try:
+            import httpx
+            normalize_url = spider.settings.get('NORMALIZE_SERVICE_URL')
+            
+            if not normalize_url:
+                logger.warning("NORMALIZE_SERVICE_URL not configured, skipping normalization trigger")
+                return
+            
+            # Make async HTTP call (fire and forget for MVP)
+            # In production, use Celery or message queue
+            try:
+                # Use httpx in sync mode for Scrapy pipeline
+                # Ensure artifact_id is a string for JSON serialization
+                artifact_id_str = str(artifact_id)
+                
+                with httpx.Client(timeout=10.0) as client:
+                    response = client.post(
+                        f"{normalize_url}/api/v1/documents/process",
+                        json={"artifact_id": artifact_id_str},
+                        timeout=10.0
+                    )
+                    if response.status_code == 200:
+                        logger.info(f"Triggered normalization for artifact {artifact_id}")
+                    else:
+                        logger.warning(
+                            f"Normalization trigger returned {response.status_code} "
+                            f"for artifact {artifact_id}: {response.text}"
+                        )
+            except httpx.TimeoutException:
+                logger.warning(f"Timeout triggering normalization for artifact {artifact_id}")
+            except httpx.RequestError as e:
+                logger.warning(f"Failed to trigger normalization for artifact {artifact_id}: {e}")
+                
+        except ImportError:
+            logger.warning("httpx not available, cannot trigger normalization")
+        except Exception as e:
+            # Don't fail the pipeline if normalization trigger fails
+            logger.warning(f"Error triggering normalization for artifact {artifact_id}: {e}")
+    
     def _store_metadata(self, item: DocumentMetadataItem, spider):
         """Store document metadata in database."""
         session = self.Session()
         
         try:
-            # Import here to avoid circular imports
-            from app.models import DocumentMetadata, Artifact
+            # Import models from svc-api service
+            import sys
+            import pathlib
+            # Get the apps directory (parent of svc-ingestion)
+            apps_dir = pathlib.Path(__file__).resolve().parent.parent.parent
+            svc_api_app_path = apps_dir / 'svc-api' / 'app'
+            if str(svc_api_app_path) not in sys.path:
+                sys.path.insert(0, str(svc_api_app_path))
+            from models.artifact import Artifact, DocumentMetadata
             
             # Find the associated artifact
             artifact = session.query(Artifact).filter_by(uri=item['artifact_uri']).first()
@@ -413,12 +485,26 @@ class ObjectStoragePipeline:
     def process_item(self, item, spider):
         """Store raw content in object storage."""
         
-        if isinstance(item, ArtifactItem) and item.get('raw_content'):
-            try:
-                self._store_content(item, spider)
-                self.stored_count += 1
-            except Exception as e:
-                logger.error(f"Object storage error for {item['uri']}: {e}")
+        # Log that we received an item
+        if isinstance(item, ArtifactItem):
+            logger.info(f"ObjectStorage received ArtifactItem: {item.get('uri', 'no uri')[:60]}")
+            has_raw = item.get('raw_content') is not None
+            logger.info(f"  Has raw_content: {has_raw}")
+            
+            if has_raw:
+                raw_content = item.get('raw_content')
+                logger.info(f"  raw_content type: {type(raw_content)}, size: {len(raw_content) if raw_content else 0}")
+            
+            if has_raw:
+                try:
+                    self._store_content(item, spider)
+                    self.stored_count += 1
+                except Exception as e:
+                    logger.error(f"Object storage error for {item['uri']}: {e}")
+                    import traceback
+                    logger.error(f"Full traceback: {traceback.format_exc()}")
+            else:
+                logger.warning(f"  Skipping - no raw_content in item")
         
         return item
     
@@ -445,15 +531,25 @@ class ObjectStoragePipeline:
             'spider': item.get('spider_name', ''),
         }
         
+        # Ensure raw_content is bytes, not a list
+        raw_content = item['raw_content']
+        if isinstance(raw_content, list):
+            # If it's a list, join the bytes
+            raw_content = b''.join(raw_content) if raw_content else b''
+        elif not isinstance(raw_content, (bytes, bytearray)):
+            # If it's a string or other type, encode it
+            raw_content = str(raw_content).encode('utf-8')
+        
         self.s3_client.put_object(
             Bucket=self.bucket,
             Key=key,
-            Body=item['raw_content'],
+            Body=raw_content,
             ContentType=item.get('mime_type', 'application/octet-stream'),
             Metadata=metadata
         )
         
-        item['storage_key'] = key
+        # Note: storage_key is not stored in item as ArtifactItem doesn't have that field
+        # The key can be reconstructed from content_hash when needed
         logger.debug(f"Stored content: {content_hash} -> {key}")
     
     def close_spider(self, spider):

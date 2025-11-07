@@ -78,7 +78,9 @@ class ArtifactItem(scrapy.Item):
     )
     
     # Content
-    raw_content = Field()  # Binary content
+    raw_content = Field(
+        output_processor=TakeFirst()  # Take first item from list (response.body)
+    )  # Binary content
     
     text_content = Field(
         input_processor=MapCompose(clean_text),

@@ -8,6 +8,20 @@ with anti-bot evasion and performance optimization.
 import os
 from pathlib import Path
 
+# Load .env.detected from project root to get LOREGUARD_HOST_IP
+# Path: settings.py -> app -> svc-ingestion -> apps -> LoreGuard (4 levels up)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+env_detected_path = PROJECT_ROOT / ".env.detected"
+if env_detected_path.exists():
+    with open(env_detected_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                # Only set if not already in environment
+                if key not in os.environ:
+                    os.environ[key] = value
+
 # Scrapy settings for loreguard-ingestion project
 BOT_NAME = 'loreguard-ingestion'
 
@@ -115,14 +129,14 @@ PLAYWRIGHT_DEFAULT_TIMEOUT = 30000
 # =============================================================================
 
 # Configure item pipelines
+# Note: DeduplicationPipeline disabled for MVP (requires Redis)
+# MonitoringPipeline disabled for MVP (optional enhancement)
 ITEM_PIPELINES = {
-    # 'app.pipelines.ValidationPipeline': 100,
-    # 'app.pipelines.DeduplicationPipeline': 200,
-    # 'app.pipelines.ContentHashPipeline': 300,
-    # 'app.pipelines.MetadataExtractionPipeline': 400,
-    # 'app.pipelines.DatabaseStoragePipeline': 500,
-    # 'app.pipelines.ObjectStoragePipeline': 600,
-    # 'app.pipelines.MonitoringPipeline': 700,
+    'app.pipelines.ValidationPipeline': 100,
+    'app.pipelines.ContentHashPipeline': 300,
+    'app.pipelines.MetadataExtractionPipeline': 400,
+    'app.pipelines.DatabaseStoragePipeline': 500,
+    'app.pipelines.ObjectStoragePipeline': 600,
 }
 
 # =============================================================================
@@ -165,17 +179,18 @@ EXTENSIONS = {
 # =============================================================================
 
 # Database configuration
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://loreguard:password@localhost:5432/loreguard')
+LOREGUARD_HOST_IP = os.getenv('LOREGUARD_HOST_IP', 'localhost')
+DATABASE_URL = os.getenv('DATABASE_URL', f'postgresql://loreguard:password@{LOREGUARD_HOST_IP}:5432/loreguard')
 
 # Redis configuration (for job queues and caching)
-REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379')
+REDIS_URL = os.getenv('REDIS_URL', f'redis://{LOREGUARD_HOST_IP}:6379')
 
 # MinIO/S3 configuration
-MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'http://localhost:9000')
+MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', f'http://{LOREGUARD_HOST_IP}:9000')
 MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'loreguard')
-MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'password')
-MINIO_BUCKET_ARTIFACTS = 'artifacts'
-MINIO_BUCKET_EVIDENCE = 'evidence'
+MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minio_password_here')  # From docker-compose
+MINIO_BUCKET_ARTIFACTS = os.getenv('MINIO_BUCKET_ARTIFACTS', 'loreguard-artifacts')  # Match other services
+MINIO_BUCKET_EVIDENCE = os.getenv('MINIO_BUCKET_EVIDENCE', 'loreguard-evidence')
 
 # Content processing settings
 MAX_CONTENT_SIZE = 50 * 1024 * 1024  # 50MB max file size
@@ -210,6 +225,10 @@ HEALTH_CHECK_PORT = int(os.getenv('HEALTH_CHECK_PORT', '8080'))
 # Job processing
 MAX_CONCURRENT_JOBS = int(os.getenv('MAX_CONCURRENT_JOBS', '5'))
 JOB_TIMEOUT = int(os.getenv('JOB_TIMEOUT', '3600'))  # 1 hour
+
+# External service URLs
+NORMALIZE_SERVICE_URL = os.getenv('NORMALIZE_SERVICE_URL', f'http://{LOREGUARD_HOST_IP}:8001')
+API_SERVICE_URL = os.getenv('API_SERVICE_URL', f'http://{LOREGUARD_HOST_IP}:8000')
 
 # Content validation
 MIN_CONTENT_LENGTH = 100  # Minimum content length to consider valid

@@ -18,9 +18,13 @@ out/
 # Environment variables
 .env
 .env.local
+.env.detected
 .env.development.local
 .env.test.local
 .env.production.local
+*.env.detected
+apps/*/.env.detected
+apps/*/*/.env.detected
 
 # Logs
 *.log
@@ -76,9 +80,6 @@ venv.bak/
 .coverage
 htmlcov/
 
-# Scrapy
-.scrapy
-
 # Database files
 *.db
 *.sqlite
@@ -98,6 +99,7 @@ Thumbs.db
 
 # IDE files
 .vscode/
+.cursor/
 *.swp
 *.swo
 *~
@@ -116,4 +118,120 @@ nextcloud-db/
 minio-data/
 postgres-data/
 redis-data/
+
+# Process ID files
+*.pid
+logs/*.pid
+
+# Temporary and accidental files
+=*
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Docker volumes and data
+docker-data/
+.docker-data/
+
+# Cache directories
+.cache/
+*.cache
+httpcache/
+
+# OS and editor files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+.#*
+\#*#
+.*.sw[a-z]
+*.un~
+
+# Package manager lock files (keep package.json/requirements.txt, ignore locks)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Pipfile.lock
+poetry.lock
+
+# Coverage and test artifacts
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.pytest_cache/
+.hypothesis/
+*.cover
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Scrapy
+.scrapy/
+
+# Playwright
+.playwright/
+
+# Playwright browsers
+**/ms-playwright/
+
+# Node modules (ensure it's comprehensive)
+node_modules/
+**/node_modules/
+.npm
+.eslintcache
+.stylelintcache
+
+# Vite build outputs
+dist/
+dist-ssr/
+*.local
+
+# Editor directories and files
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 

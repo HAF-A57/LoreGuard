@@ -9,6 +9,8 @@ from .rubric import Rubric
 from .evaluation import Evaluation
 from .job import Job
 from .library import LibraryItem
+from .llm_provider import LLMProvider
+from .prompt_template import PromptTemplate
 
 __all__ = [
     "Source",
@@ -18,6 +20,8 @@ __all__ = [
     "Rubric",
     "Evaluation",
     "Job",
-    "LibraryItem"
+    "LibraryItem",
+    "LLMProvider",
+    "PromptTemplate"
 ]
 

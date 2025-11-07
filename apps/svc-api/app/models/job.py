@@ -4,6 +4,7 @@ Job model for workflow and task tracking
 
 from sqlalchemy import Column, String, DateTime, JSON, Integer, Text
 from sqlalchemy.sql import func
+from datetime import datetime, timezone
 import uuid
 
 from db.database import Base
@@ -16,11 +17,11 @@ class Job(Base):
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     type = Column(String(100), nullable=False, index=True)  # ingest, normalize, evaluate, etc.
-    status = Column(String(50), default="pending", index=True)  # pending, running, completed, failed
+    status = Column(String(50), default="pending", index=True)  # pending, running, completed, failed, cancelled, timeout, hanging
     timeline = Column(JSON, default=list)  # Array of status changes with timestamps
     retries = Column(Integer, default=0)
     error = Column(Text)  # Error message if failed
-    payload = Column(JSON)  # Job-specific data
+    payload = Column(JSON)  # Job-specific data (process_id, progress, items_processed, total_items, etc.)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -31,16 +32,17 @@ class Job(Base):
     
     def add_timeline_entry(self, status: str, message: str = None):
         """Add entry to job timeline"""
-        if not self.timeline:
-            self.timeline = []
+        # Create new list to trigger SQLAlchemy change detection for JSON column
+        current_timeline = list(self.timeline) if self.timeline else []
         
         entry = {
-            "timestamp": func.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "status": status,
             "message": message
         }
         
-        self.timeline.append(entry)
+        current_timeline.append(entry)
+        self.timeline = current_timeline  # Reassign to trigger change detection
         self.status = status
     
     @property

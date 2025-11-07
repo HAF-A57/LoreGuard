@@ -14,19 +14,26 @@ import hashlib
 import mimetypes
 
 # Document processing libraries
+UNSTRUCTURED_AVAILABLE = False
 try:
     from unstructured.partition.auto import partition
     from unstructured.partition.pdf import partition_pdf
     from unstructured.partition.html import partition_html
     from unstructured.partition.docx import partition_docx
     from unstructured.partition.pptx import partition_pptx
-    from unstructured.partition.xlsx import partition_xlsx
     from unstructured.partition.text import partition_text
     from unstructured.partition.email import partition_email
     from unstructured.partition.image import partition_image
     UNSTRUCTURED_AVAILABLE = True
 except ImportError:
     UNSTRUCTURED_AVAILABLE = False
+
+# Excel support (optional)
+try:
+    from unstructured.partition.xlsx import partition_xlsx
+    XLSX_AVAILABLE = True
+except ImportError:
+    XLSX_AVAILABLE = False
 
 # OCR libraries
 try:
@@ -222,12 +229,13 @@ class DocumentParserService:
                     if hasattr(element, 'text'):
                         text_parts.append(element.text)
                     
-                    # Extract tables
-                    if hasattr(element, 'metadata') and element.metadata.get('text_as_html'):
-                        tables.append({
-                            'html': element.metadata['text_as_html'],
-                            'text': element.text
-                        })
+                    # Extract tables (ElementMetadata uses attributes, not dict .get())
+                    if hasattr(element, 'metadata') and hasattr(element.metadata, 'text_as_html'):
+                        if element.metadata.text_as_html:
+                            tables.append({
+                                'html': element.metadata.text_as_html,
+                                'text': element.text
+                            })
                 
                 result['text_content'] = '\n'.join(text_parts)
                 result['tables'] = tables
@@ -327,12 +335,13 @@ class DocumentParserService:
                 if hasattr(element, 'text'):
                     text_parts.append(element.text)
                 
-                # Extract tables
-                if hasattr(element, 'metadata') and element.metadata.get('text_as_html'):
-                    tables.append({
-                        'html': element.metadata['text_as_html'],
-                        'text': element.text
-                    })
+                    # Extract tables (ElementMetadata uses attributes, not dict .get())
+                    if hasattr(element, 'metadata') and hasattr(element.metadata, 'text_as_html'):
+                        if element.metadata.text_as_html:
+                            tables.append({
+                                'html': element.metadata.text_as_html,
+                                'text': element.text
+                            })
             
             return {
                 'text_content': '\n'.join(text_parts),
@@ -420,9 +429,10 @@ class DocumentParserService:
                 if hasattr(element, 'text'):
                     text_parts.append(element.text)
                 
-                # Extract links if available
-                if hasattr(element, 'metadata') and element.metadata.get('link_urls'):
-                    links.extend(element.metadata['link_urls'])
+                # Extract links if available (ElementMetadata doesn't support .get())
+                if hasattr(element, 'metadata') and hasattr(element.metadata, 'link_urls'):
+                    if element.metadata.link_urls:
+                        links.extend(element.metadata.link_urls)
             
             return {
                 'text_content': '\n'.join(text_parts),
@@ -500,12 +510,13 @@ class DocumentParserService:
                 if hasattr(element, 'text'):
                     text_parts.append(element.text)
                 
-                # Extract tables
-                if hasattr(element, 'metadata') and element.metadata.get('text_as_html'):
-                    tables.append({
-                        'html': element.metadata['text_as_html'],
-                        'text': element.text
-                    })
+                    # Extract tables (ElementMetadata uses attributes, not dict .get())
+                    if hasattr(element, 'metadata') and hasattr(element.metadata, 'text_as_html'):
+                        if element.metadata.text_as_html:
+                            tables.append({
+                                'html': element.metadata.text_as_html,
+                                'text': element.text
+                            })
             
             return {
                 'text_content': '\n'.join(text_parts),

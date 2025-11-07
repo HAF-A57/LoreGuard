@@ -11,7 +11,9 @@ import uuid
 from db.database import get_db
 from models.source import Source
 from models.artifact import Artifact
+from models.job import Job
 from schemas.source import SourceResponse, SourceListResponse, SourceCreate, SourceUpdate
+from services.crawl_service import CrawlService
 
 router = APIRouter()
 
@@ -151,6 +153,9 @@ async def trigger_source_crawl(
 ):
     """
     Trigger manual crawl for a source
+    
+    Validates source configuration and starts a Scrapy spider to crawl the source.
+    Creates a job record to track the crawl progress.
     """
     source = db.query(Source).filter(Source.id == source_id).first()
     
@@ -158,14 +163,46 @@ async def trigger_source_crawl(
         raise HTTPException(status_code=404, detail="Source not found")
     
     if source.status != "active":
-        raise HTTPException(status_code=400, detail="Source is not active")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Source is not active (current status: {source.status})"
+        )
     
-    # TODO: Implement crawl triggering via Temporal workflow
-    # For now, return a placeholder response
+    # Initialize crawl service
+    try:
+        crawl_service = CrawlService()
+    except ValueError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Crawl service initialization failed: {str(e)}"
+        )
     
-    return {
-        "message": "Crawl triggered",
-        "source_id": source_id,
-        "source_name": source.name
-    }
+    # Trigger crawl
+    try:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[ENDPOINT] About to call trigger_crawl for source {source.id}")
+        job = crawl_service.trigger_crawl(source=source, db=db)
+        logger.info(f"[ENDPOINT] trigger_crawl returned job {job.id}, status={job.status}")
+        logger.info(f"[ENDPOINT] job.payload={job.payload}")
+        
+        return {
+            "message": "Crawl triggered successfully",
+            "source_id": str(source_id),
+            "source_name": source.name,
+            "job_id": job.id,
+            "status": job.status,
+            "spider_name": job.payload.get("spider_name") if job.payload else None,
+            "process_id": job.payload.get("process_id") if job.payload else None
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error triggering crawl: {str(e)}"
+        )
 

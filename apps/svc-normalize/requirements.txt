@@ -64,7 +64,7 @@ pytz>=2023.3
 # Utilities
 chardet>=5.2.0
 validators>=0.22.0
-hashlib3>=2.0.1
+# Note: hashlib is part of Python standard library, no need to install
 
 # Development and Testing
 pytest>=7.4.0
