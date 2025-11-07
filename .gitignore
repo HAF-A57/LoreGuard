@@ -118,6 +118,7 @@ nextcloud-db/
 minio-data/
 postgres-data/
 redis-data/
+reports/
 
 # Process ID files
 *.pid
