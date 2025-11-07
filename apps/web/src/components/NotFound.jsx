@@ -105,15 +105,15 @@ const NotFound = ({ onNavigateHome, onNavigateBack }) => {
           <p className="mb-2">Still need help? Contact support or check our user guide.</p>
           <div className="flex items-center justify-center space-x-4">
             <Button variant="link" className="p-0 h-auto">
-              Contact Support
+              Contact Support<span className="placeholder-indicator">⭐</span>
             </Button>
             <span>•</span>
             <Button variant="link" className="p-0 h-auto">
-              User Guide
+              User Guide<span className="placeholder-indicator">⭐</span>
             </Button>
             <span>•</span>
             <Button variant="link" className="p-0 h-auto">
-              System Status
+              System Status<span className="placeholder-indicator">⭐</span>
             </Button>
           </div>
         </div>

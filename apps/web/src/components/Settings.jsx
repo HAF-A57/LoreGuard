@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Input } from '@/components/ui/input.jsx'
@@ -7,6 +7,9 @@ import { Switch } from '@/components/ui/switch.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
 import { ScrollArea } from '@/components/ui/scroll-area.jsx'
 import { Separator } from '@/components/ui/separator.jsx'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.jsx'
+import { Label } from '@/components/ui/label.jsx'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { 
   Settings as SettingsIcon, 
   Brain, 
@@ -21,9 +24,16 @@ import {
   RotateCcw,
   AlertTriangle,
   CheckCircle,
+  XCircle,
   Edit,
-  Trash2
+  Trash2,
+  Plus,
+  Loader2,
+  PlayCircle
 } from 'lucide-react'
+import { API_URL } from '@/config.js'
+import { toast } from 'sonner'
+import PromptTemplates from './PromptTemplates.jsx'
 
 const Settings = () => {
   const [notifications, setNotifications] = useState({
@@ -40,39 +50,314 @@ const Settings = () => {
     debugMode: false
   })
 
-  // Mock data for LLM models
-  const llmModels = [
-    {
-      id: 1,
-      name: "GPT-4",
-      provider: "OpenAI",
-      status: "active",
-      usage: "Primary evaluation model",
-      apiKey: "sk-...abc123",
-      costPerToken: 0.03,
-      avgResponseTime: 1.2
-    },
-    {
-      id: 2,
-      name: "Claude-3",
-      provider: "Anthropic",
-      status: "backup",
-      usage: "Secondary evaluation model",
-      apiKey: "sk-...def456",
-      costPerToken: 0.025,
-      avgResponseTime: 1.8
-    },
-    {
-      id: 3,
-      name: "Llama-2",
-      provider: "Meta",
-      status: "inactive",
-      usage: "Experimental model",
-      apiKey: "Not configured",
-      costPerToken: 0.01,
-      avgResponseTime: 2.1
+  // LLM Providers state
+  const [llmProviders, setLlmProviders] = useState([])
+  const [loadingProviders, setLoadingProviders] = useState(true)
+  const [showProviderDialog, setShowProviderDialog] = useState(false)
+  const [editingProvider, setEditingProvider] = useState(null)
+  const [providerForm, setProviderForm] = useState({
+    name: '',
+    provider: 'openai',
+    model: '',
+    api_key: '',
+    base_url: '',
+    status: 'inactive',
+    priority: 'normal',
+    is_default: false,
+    description: ''
+  })
+  const [availableModels, setAvailableModels] = useState([])
+  const [detectingModels, setDetectingModels] = useState(false)
+  const [modelDetectionError, setModelDetectionError] = useState(null)
+  const [testingProvider, setTestingProvider] = useState(null)
+  const [testResult, setTestResult] = useState(null)
+
+  // Fetch LLM providers from API
+  useEffect(() => {
+    fetchProviders()
+  }, [])
+
+  const fetchProviders = async () => {
+    try {
+      setLoadingProviders(true)
+      // Add timeout to prevent infinite spinning
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      
+      const response = await fetch(`${API_URL}/api/v1/llm-providers/`, {
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (response.ok) {
+        const data = await response.json()
+        setLlmProviders(data.items || [])
+      } else {
+        console.error('Failed to fetch LLM providers:', response.statusText)
+        toast.error(`Failed to load providers: ${response.statusText}`)
+        setLlmProviders([])
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.error('Request timeout fetching LLM providers')
+        toast.error('Request timed out. The API may be slow or unresponsive.')
+      } else {
+        console.error('Error fetching LLM providers:', error)
+        toast.error(`Error loading providers: ${error.message}`)
+      }
+      setLlmProviders([])
+    } finally {
+      setLoadingProviders(false)
     }
-  ]
+  }
+
+  const handleAddProvider = () => {
+    setEditingProvider(null)
+    setProviderForm({
+      name: '',
+      provider: 'openai',
+      model: '',
+      api_key: '',
+      base_url: '',
+      status: 'inactive',
+      priority: 'normal',
+      is_default: false,
+      description: ''
+    })
+    setAvailableModels([])
+    setModelDetectionError(null)
+    setShowProviderDialog(true)
+  }
+
+  const handleEditProvider = (provider) => {
+    setEditingProvider(provider)
+    setProviderForm({
+      name: provider.name,
+      provider: provider.provider,
+      model: provider.model,
+      api_key: '', // Don't pre-fill API key for security
+      base_url: provider.base_url || '',
+      status: provider.status,
+      priority: provider.priority,
+      is_default: provider.is_default,
+      description: provider.description || ''
+    })
+    setAvailableModels([])
+    setModelDetectionError(null)
+    setShowProviderDialog(true)
+  }
+
+  const detectModels = async () => {
+    if (!providerForm.api_key || !providerForm.provider) {
+      setModelDetectionError('Please enter an API key and select a provider')
+      return
+    }
+
+    try {
+      setDetectingModels(true)
+      setModelDetectionError(null)
+      
+      const requestBody = {
+        provider: providerForm.provider,
+        api_key: providerForm.api_key,
+        ...(providerForm.base_url && { base_url: providerForm.base_url })
+      }
+      
+      const url = `${API_URL}/api/v1/llm-providers/detect-models`
+      console.log('Detecting models:', { 
+        provider: providerForm.provider, 
+        url,
+        hasApiKey: !!providerForm.api_key,
+        hasBaseUrl: !!providerForm.base_url
+      })
+      
+      // Add timeout to prevent infinite spinning
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 45000) // 45 second timeout for model detection
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      console.log('Model detection response:', { 
+        status: response.status, 
+        ok: response.ok,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Model detection success:', { 
+          count: data.count, 
+          models: data.models?.length,
+          provider: data.provider
+        })
+        setAvailableModels(data.models || [])
+        
+        // Auto-select first model if none selected
+        if (!providerForm.model && data.models && data.models.length > 0) {
+          setProviderForm({ ...providerForm, model: data.models[0].id })
+        }
+      } else {
+        let errorDetail = 'Failed to detect models'
+        try {
+          const errorText = await response.text()
+          console.error('Model detection error response text:', errorText)
+          try {
+            const error = JSON.parse(errorText)
+            errorDetail = error.detail || error.message || errorDetail
+            console.error('Model detection error response:', error)
+          } catch (parseError) {
+            errorDetail = errorText || `HTTP ${response.status}: ${response.statusText}`
+          }
+        } catch (e) {
+          errorDetail = `HTTP ${response.status}: ${response.statusText}`
+          console.error('Model detection error - could not parse response:', e)
+        }
+        setModelDetectionError(errorDetail)
+        setAvailableModels([])
+      }
+    } catch (error) {
+      console.error('Error detecting models:', error)
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      })
+      
+      if (error.name === 'AbortError') {
+        setModelDetectionError('Request timed out. The API may be slow or unresponsive. Please try again.')
+        toast.error('Model detection timed out. Please check your API key and try again.')
+      } else {
+        setModelDetectionError(`Error: ${error.message || 'Network error occurred'}`)
+        toast.error(`Model detection failed: ${error.message || 'Unknown error'}`)
+      }
+      setAvailableModels([])
+    } finally {
+      setDetectingModels(false)
+    }
+  }
+
+  const handleSaveProvider = async () => {
+    try {
+      const url = editingProvider 
+        ? `${API_URL}/api/v1/llm-providers/${editingProvider.id}`  // No trailing slash for PUT (path parameter)
+        : `${API_URL}/api/v1/llm-providers/`  // Trailing slash for POST (list route)
+      
+      const method = editingProvider ? 'PUT' : 'POST'
+      
+      // Prepare form data - exclude empty API key when editing (don't overwrite existing key)
+      const formData = { ...providerForm }
+      if (editingProvider && !formData.api_key) {
+        delete formData.api_key  // Don't send empty API key on update
+      }
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+
+      if (response.ok) {
+        setShowProviderDialog(false)
+        fetchProviders() // Refresh list
+      } else {
+        const error = await response.json()
+        alert(`Failed to save provider: ${error.detail || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error saving provider:', error)
+      alert(`Error saving provider: ${error.message}`)
+    }
+  }
+
+  const handleDeleteProvider = async (providerId) => {
+    if (!confirm('Are you sure you want to delete this LLM provider?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/v1/llm-providers/${providerId}`, {  // No trailing slash for DELETE (path parameter)
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        fetchProviders() // Refresh list
+      } else {
+        const error = await response.json()
+        alert(`Failed to delete provider: ${error.detail || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error deleting provider:', error)
+      alert(`Error deleting provider: ${error.message}`)
+    }
+  }
+
+  const handleTestProvider = async (providerId) => {
+    try {
+      setTestingProvider(providerId)
+      setTestResult(null)
+      
+      const response = await fetch(`${API_URL}/api/v1/llm-providers/${providerId}/test`, {
+        method: 'POST'
+      })
+      
+      const result = await response.json()
+      setTestResult(result)
+      
+      // Auto-clear result after 10 seconds
+      setTimeout(() => {
+        setTestResult(null)
+      }, 10000)
+    } catch (error) {
+      console.error('Error testing provider:', error)
+      setTestResult({
+        success: false,
+        error: `Test failed: ${error.message}`,
+        error_code: 500
+      })
+    } finally {
+      setTestingProvider(null)
+    }
+  }
+
+  const handleStatusChange = async (providerId, newStatus) => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/llm-providers/${providerId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+      })
+
+      if (response.ok) {
+        fetchProviders() // Refresh list
+      } else {
+        const error = await response.json()
+        alert(`Failed to update status: ${error.detail || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error updating status:', error)
+      alert(`Error updating status: ${error.message}`)
+    }
+  }
+
+  const capitalizeStatus = (status) => {
+    if (!status) return status
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+  }
 
   // Mock data for users
   const users = [
@@ -123,9 +408,10 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="system" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="models">AI Models</TabsTrigger>
+          <TabsTrigger value="prompts">Prompts</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
@@ -230,54 +516,354 @@ const Settings = () => {
         <TabsContent value="models" className="space-y-6">
           <Card className="aulendur-gradient-card">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Brain className="h-5 w-5" />
-                <span>AI Model Configuration</span>
-              </CardTitle>
-              <CardDescription>Manage LLM models for artifact evaluation</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Brain className="h-5 w-5" />
+                    <span>AI Model Configuration</span>
+                  </CardTitle>
+                  <CardDescription>Manage LLM models for artifact evaluation</CardDescription>
+                </div>
+                <Button onClick={handleAddProvider} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Provider
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {llmModels.map((model) => (
-                  <Card key={model.id} className="aulendur-hover-transform">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div>
-                            <div className="font-medium flex items-center space-x-2">
-                              <span>{model.name}</span>
-                              <Badge variant={
-                                model.status === 'active' ? 'default' : 
-                                model.status === 'backup' ? 'secondary' : 'outline'
-                              }>
-                                {model.status}
-                              </Badge>
+              {loadingProviders ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-muted-foreground">Loading providers...</span>
+                </div>
+              ) : llmProviders.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">No LLM providers configured</p>
+                  <Button onClick={handleAddProvider} variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Provider
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {llmProviders.map((provider) => (
+                    <Card 
+                      key={provider.id} 
+                      className={`aulendur-hover-transform ${
+                        provider.is_default 
+                          ? 'border-2 border-primary shadow-lg bg-primary/5 dark:bg-primary/10' 
+                          : ''
+                      }`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div>
+                              <div className="font-medium flex items-center space-x-2 flex-wrap gap-2">
+                                <span>{provider.name}</span>
+                                {provider.is_default && (
+                                  <Badge variant="default" className="font-semibold">Default</Badge>
+                                )}
+                                <Select
+                                  value={provider.status}
+                                  onValueChange={(newStatus) => handleStatusChange(provider.id, newStatus)}
+                                >
+                                  <SelectTrigger className="h-auto w-auto p-0 border-0 bg-transparent hover:bg-transparent shadow-none focus:ring-0 focus-visible:ring-0 data-[state=open]:bg-transparent [&>svg]:opacity-50 [&>svg]:hover:opacity-70">
+                                    <SelectValue>
+                                      <Badge 
+                                        variant={
+                                          provider.status === 'active' ? 'default' : 
+                                          provider.status === 'backup' ? 'secondary' : 'outline'
+                                        }
+                                        className="cursor-pointer hover:opacity-80 transition-opacity"
+                                      >
+                                        {capitalizeStatus(provider.status)}
+                                      </Badge>
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="backup">Backup</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {provider.provider} • {provider.model}
+                                {provider.description && ` • ${provider.description}`}
+                              </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">{model.provider} • {model.usage}</div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {provider.cost_per_token && (
+                              <div className="text-right text-sm mr-2">
+                                <div>${provider.cost_per_token}/token</div>
+                                {provider.avg_response_time && (
+                                  <div className="text-muted-foreground">{provider.avg_response_time}s avg</div>
+                                )}
+                              </div>
+                            )}
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleTestProvider(provider.id)}
+                              disabled={testingProvider === provider.id}
+                              title="Test/Sanity Check Provider"
+                            >
+                              {testingProvider === provider.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <PlayCircle className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditProvider(provider)}
+                              title="Edit Provider"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteProvider(provider.id)}
+                              className="text-red-500 hover:text-red-700"
+                              title="Delete Provider"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-4">
-                          <div className="text-right text-sm">
-                            <div>${model.costPerToken}/token</div>
-                            <div className="text-muted-foreground">{model.avgResponseTime}s avg</div>
+                        <div className="mt-3 pt-3 border-t border-border space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Key className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">
+                              API Key: {provider.api_key_masked || 'Not configured'}
+                            </span>
                           </div>
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {testResult && testResult.provider_id === provider.id && (
+                            <div className={`mt-2 p-2 rounded-md text-sm ${
+                              testResult.success 
+                                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+                                : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                            }`}>
+                              <div className="flex items-center space-x-2">
+                                {testResult.success ? (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    <span className="text-green-800 dark:text-green-200 font-medium">Test Passed</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                    <span className="text-red-800 dark:text-red-200 font-medium">Test Failed</span>
+                                  </>
+                                )}
+                              </div>
+                              {testResult.success ? (
+                                <div className="mt-1 text-green-700 dark:text-green-300">
+                                  <div>Response: {testResult.response || 'No response'}</div>
+                                  <div className="text-xs mt-1">
+                                    Response time: {testResult.response_time_seconds}s • Tokens: {testResult.tokens_used || 0}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="mt-1 text-red-700 dark:text-red-300">
+                                  <div>{testResult.error || 'Unknown error'}</div>
+                                  {testResult.error_code && (
+                                    <div className="text-xs mt-1">Error code: {testResult.error_code}</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <div className="flex items-center space-x-2">
-                          <Key className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">API Key: {model.apiKey}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Add/Edit Provider Dialog */}
+          <Dialog open={showProviderDialog} onOpenChange={setShowProviderDialog}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingProvider ? 'Edit LLM Provider' : 'Add LLM Provider'}
+                </DialogTitle>
+                <DialogDescription>
+                  Configure an LLM provider for artifact evaluation
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                      id="name"
+                      placeholder="e.g., GPT-4 Primary"
+                      value={providerForm.name}
+                      onChange={(e) => setProviderForm({ ...providerForm, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="provider">Provider</Label>
+                    <Select
+                      value={providerForm.provider}
+                      onValueChange={(value) => {
+                        setProviderForm({ ...providerForm, provider: value, model: '' })
+                        setAvailableModels([]) // Clear models when provider changes
+                        setModelDetectionError(null)
+                      }}
+                    >
+                      <SelectTrigger id="provider">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="openai">OpenAI</SelectItem>
+                        <SelectItem value="anthropic">Anthropic</SelectItem>
+                        <SelectItem value="azure">Azure OpenAI</SelectItem>
+                        <SelectItem value="local">Local Model</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="model">Model</Label>
+                    <div className="flex space-x-2 items-start">
+                      <div className="flex-1 min-w-0">
+                        <Select
+                          value={providerForm.model}
+                          onValueChange={(value) => setProviderForm({ ...providerForm, model: value })}
+                          disabled={availableModels.length === 0}
+                        >
+                          <SelectTrigger id="model" className="w-full">
+                            <SelectValue placeholder={availableModels.length > 0 ? "Select a model" : "Enter API key and click Detect"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableModels.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name || model.id}
+                                {model.description && ` - ${model.description}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={detectModels}
+                        disabled={detectingModels || !providerForm.api_key || !providerForm.provider}
+                        title="Detect available models from provider"
+                        className="shrink-0 flex-shrink-0"
+                      >
+                        {detectingModels ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Zap className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    {modelDetectionError && (
+                      <p className="text-sm text-red-500">{modelDetectionError}</p>
+                    )}
+                    {availableModels.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Found {availableModels.length} model(s). Select one above or enter manually.
+                      </p>
+                    )}
+                    {availableModels.length === 0 && providerForm.api_key && (
+                      <p className="text-xs text-muted-foreground">
+                        Click the lightning icon to detect available models, or enter model name manually.
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select
+                      value={providerForm.status}
+                      onValueChange={(value) => setProviderForm({ ...providerForm, status: value })}
+                    >
+                      <SelectTrigger id="status" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="backup">Backup</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="api_key">API Key</Label>
+                  <Input
+                    id="api_key"
+                    type="password"
+                    placeholder={editingProvider ? "Leave blank to keep existing" : "Enter API key"}
+                    value={providerForm.api_key}
+                    onChange={(e) => {
+                      setProviderForm({ ...providerForm, api_key: e.target.value })
+                      // Clear models when API key changes (user might be entering different key)
+                      if (availableModels.length > 0) {
+                        setAvailableModels([])
+                        setModelDetectionError(null)
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter your API key and click the lightning icon next to Model to auto-detect available models.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="base_url">Base URL (Optional)</Label>
+                  <Input
+                    id="base_url"
+                    placeholder="https://api.openai.com/v1 (leave blank for default)"
+                    value={providerForm.base_url}
+                    onChange={(e) => setProviderForm({ ...providerForm, base_url: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Input
+                    id="description"
+                    placeholder="Usage notes or description"
+                    value={providerForm.description}
+                    onChange={(e) => setProviderForm({ ...providerForm, description: e.target.value })}
+                  />
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={providerForm.is_default}
+                      onCheckedChange={(checked) => setProviderForm({ ...providerForm, is_default: checked })}
+                    />
+                    <Label>Set as default provider</Label>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowProviderDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveProvider}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {editingProvider ? 'Update' : 'Create'} Provider
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        <TabsContent value="prompts" className="space-y-6">
+          <PromptTemplates />
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">

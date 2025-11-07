@@ -34,15 +34,15 @@ CREATE TABLE IF NOT EXISTS artifacts (
     normalized_ref TEXT
 );
 
--- Metadata table
-CREATE TABLE IF NOT EXISTS metadata (
+-- Document Metadata table
+CREATE TABLE IF NOT EXISTS document_metadata (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     artifact_id UUID REFERENCES artifacts(id),
     title TEXT,
-    authors TEXT[],
+    authors TEXT,
     organization TEXT,
     pub_date TIMESTAMP WITH TIME ZONE,
-    topics TEXT[],
+    topics TEXT,
     geo_location TEXT,
     language VARCHAR(10),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -107,12 +107,112 @@ CREATE TABLE IF NOT EXISTS library_items (
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_artifacts_source_id ON artifacts(source_id);
 CREATE INDEX IF NOT EXISTS idx_artifacts_content_hash ON artifacts(content_hash);
-CREATE INDEX IF NOT EXISTS idx_metadata_artifact_id ON metadata(artifact_id);
+CREATE INDEX IF NOT EXISTS idx_document_metadata_artifact_id ON document_metadata(artifact_id);
 CREATE INDEX IF NOT EXISTS idx_evaluations_artifact_id ON evaluations(artifact_id);
+CREATE INDEX IF NOT EXISTS idx_evaluations_label ON evaluations(label);
+CREATE INDEX IF NOT EXISTS idx_evaluations_created_at ON evaluations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_evaluations_artifact_created ON evaluations(artifact_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_jobs_type ON jobs(type);
+CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_library_items_artifact_id ON library_items(artifact_id);
 CREATE INDEX IF NOT EXISTS idx_library_items_is_signal ON library_items(is_signal);
+
+-- LLM Providers table
+CREATE TABLE IF NOT EXISTS llm_providers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    provider VARCHAR(100) NOT NULL,
+    api_key TEXT NOT NULL,
+    base_url VARCHAR(500),
+    model VARCHAR(100) NOT NULL,
+    status VARCHAR(50) DEFAULT 'inactive',
+    priority VARCHAR(20) DEFAULT 'normal',
+    config JSONB DEFAULT '{}',
+    max_tokens VARCHAR(20),
+    temperature VARCHAR(10),
+    timeout VARCHAR(10),
+    usage_count VARCHAR(20) DEFAULT '0',
+    cost_per_token VARCHAR(20),
+    avg_response_time VARCHAR(20),
+    description TEXT,
+    is_default BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_llm_providers_status ON llm_providers(status);
+CREATE INDEX IF NOT EXISTS idx_llm_providers_provider ON llm_providers(provider);
+CREATE INDEX IF NOT EXISTS idx_llm_providers_is_default ON llm_providers(is_default);
+
+-- Prompt Templates table
+CREATE TABLE IF NOT EXISTS prompt_templates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    reference_id VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    system_prompt TEXT,
+    user_prompt_template TEXT NOT NULL,
+    description TEXT,
+    variables JSONB DEFAULT '{}',
+    config JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT true,
+    is_default BOOLEAN DEFAULT false,
+    usage_count VARCHAR(20) DEFAULT '0',
+    tags JSONB DEFAULT '[]',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_by VARCHAR(255)
+);
+
+CREATE INDEX IF NOT EXISTS idx_prompt_templates_reference_id ON prompt_templates(reference_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_templates_type ON prompt_templates(type);
+CREATE INDEX IF NOT EXISTS idx_prompt_templates_is_active ON prompt_templates(is_active);
+CREATE INDEX IF NOT EXISTS idx_prompt_templates_is_default ON prompt_templates(is_default);
+
+-- Insert initial prompt templates (see init-prompt-templates.sql for details)
+-- These are inserted via the API after database initialization or via the init-prompt-templates.sql script
+
+-- Chat Sessions table (for AI Assistant)
+CREATE TABLE IF NOT EXISTS chat_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id VARCHAR(255) NOT NULL,
+    title VARCHAR(500),
+    total_tokens INTEGER DEFAULT 0,
+    message_count INTEGER DEFAULT 0,
+    context_summary TEXT,
+    is_active BOOLEAN DEFAULT true,
+    session_metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_message_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id ON chat_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_is_active ON chat_sessions(is_active);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated_at ON chat_sessions(updated_at DESC);
+
+-- Chat Messages table (for AI Assistant)
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id UUID REFERENCES chat_sessions(id) ON DELETE CASCADE,
+    role VARCHAR(50) NOT NULL,
+    content TEXT NOT NULL,
+    token_count INTEGER,
+    tool_calls JSONB,
+    tool_call_results JSONB,
+    function_name VARCHAR(255),
+    model_used VARCHAR(100),
+    message_metadata JSONB DEFAULT '{}',
+    is_summarized BOOLEAN DEFAULT false,
+    is_included_in_context BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_role ON chat_messages(role);
 
 -- Insert a default rubric
 INSERT INTO rubrics (version, categories, thresholds, prompts, is_active) VALUES (

@@ -121,7 +121,8 @@ echo -e " ${GREEN}✅${NC}"
 
 # Wait for MinIO
 echo -n "Waiting for MinIO"
-until curl -s http://localhost:9000/minio/health/ready &> /dev/null; do
+MINIO_HOST=${LOREGUARD_HOST_IP:-localhost}
+until curl -s http://${MINIO_HOST}:9000/minio/health/ready &> /dev/null; do
     echo -n "."
     sleep 2
 done
@@ -155,7 +156,8 @@ echo $BACKEND_PID > ../../logs/backend.pid
 
 # Wait for backend to start
 echo -n "Waiting for backend API"
-until curl -s http://localhost:8000/health &> /dev/null; do
+API_HOST=${LOREGUARD_HOST_IP:-localhost}
+until curl -s http://${API_HOST}:8000/health &> /dev/null; do
     echo -n "."
     sleep 2
 done
@@ -181,7 +183,8 @@ echo $FRONTEND_PID > ../../logs/frontend.pid
 
 # Wait for frontend to start
 echo -n "Waiting for frontend"
-until curl -s http://localhost:6060 &> /dev/null; do
+WEB_HOST=${LOREGUARD_HOST_IP:-localhost}
+until curl -s http://${WEB_HOST}:6060 &> /dev/null; do
     echo -n "."
     sleep 2
 done
@@ -205,14 +208,15 @@ echo ""
 echo -e "${GREEN}🎉 LoreGuard is ready!${NC}"
 echo ""
 echo -e "${BLUE}📱 Access URLs:${NC}"
-echo -e "   Frontend:     ${YELLOW}http://localhost:6060${NC}"
-echo -e "   Backend API:  ${YELLOW}http://localhost:8000${NC}"
-echo -e "   API Docs:     ${YELLOW}http://localhost:8000/docs${NC}"
-echo -e "   MinIO Console:${YELLOW}http://localhost:9001${NC}"
+HOST_IP=${LOREGUARD_HOST_IP:-localhost}
+echo -e "   Frontend:     ${YELLOW}http://${HOST_IP}:6060${NC}"
+echo -e "   Backend API:  ${YELLOW}http://${HOST_IP}:8000${NC}"
+echo -e "   API Docs:     ${YELLOW}http://${HOST_IP}:8000/docs${NC}"
+echo -e "   MinIO Console:${YELLOW}http://${HOST_IP}:9001${NC}"
 echo ""
 echo -e "${BLUE}🔐 Default Login:${NC}"
-echo -e "   Username: ${YELLOW}admin@airforcewargaming.com${NC}"
-echo -e "   Password: ${YELLOW}LoreGuard2024!${NC}"
+echo -e "   Email:    ${YELLOW}admin@loreguard.local${NC}"
+echo -e "   Password: ${YELLOW}admin${NC}"
 echo ""
 echo -e "${BLUE}📋 Useful Commands:${NC}"
 echo -e "   Stop services:    ${YELLOW}./scripts/dev/stop-services.sh${NC}"

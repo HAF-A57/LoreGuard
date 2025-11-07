@@ -19,10 +19,11 @@ NC='\033[0m' # No Color
 # Load environment variables
 if [[ -f .env ]]; then
     source .env
-else
-    echo -e "${RED}❌ .env file not found${NC}"
-    echo "Please run from the LoreGuard root directory"
-    exit 1
+fi
+
+# Load detected IP if available
+if [[ -f .env.detected ]]; then
+    source .env.detected
 fi
 
 echo -e "${BLUE}📋 Checking database connection...${NC}"
@@ -61,8 +62,8 @@ CREATE TABLE IF NOT EXISTS admin_users (
 -- Create initial admin user
 INSERT INTO admin_users (email, password_hash, full_name, is_superuser)
 VALUES (
-    'admin@airforcewargaming.com',
-    crypt('LoreGuard2024!', gen_salt('bf')),
+    'admin@loreguard.local',
+    crypt('admin', gen_salt('bf')),
     'LoreGuard Administrator',
     true
 ) ON CONFLICT (email) DO NOTHING;
@@ -189,7 +190,7 @@ done
 
 # Verify admin user was created
 ADMIN_COUNT=$(docker compose -f docker-compose.dev.yml exec -T postgres psql -U loreguard -d loreguard -t -c "
-SELECT COUNT(*) FROM admin_users WHERE email = 'admin@airforcewargaming.com';
+SELECT COUNT(*) FROM admin_users WHERE email = 'admin@loreguard.local';
 " | tr -d ' ')
 
 if [[ "$ADMIN_COUNT" == "1" ]]; then
@@ -217,22 +218,38 @@ echo -e "${BLUE}🔧 Setting up MinIO buckets...${NC}"
 
 # Wait for MinIO to be ready
 echo -n "Waiting for MinIO"
-until curl -s http://localhost:9000/minio/health/ready &> /dev/null; do
+# Use detected IP or fallback to localhost
+MINIO_HOST=${LOREGUARD_HOST_IP:-localhost}
+until curl -s http://${MINIO_HOST}:9000/minio/health/ready &> /dev/null; do
     echo -n "."
     sleep 2
 done
 echo -e " ${GREEN}✅${NC}"
 
-# Create MinIO buckets using mc (MinIO Client)
-docker run --rm --network host \
-    -e MC_HOST_local=http://${MINIO_ACCESS_KEY:-loreguard}:${MINIO_SECRET_KEY:-minio_password_here}@localhost:9000 \
-    minio/mc:latest sh -c "
-    mc mb local/artifacts --ignore-existing
-    mc mb local/evidence --ignore-existing
-    mc mb local/models --ignore-existing
-    mc mb local/exports --ignore-existing
-    echo 'MinIO buckets created successfully'
-"
+# Create MinIO buckets using mc (MinIO Client) via Docker
+# Use the same network as MinIO container
+# Get actual credentials from the running MinIO container
+echo -e "${YELLOW}📦 Creating MinIO buckets...${NC}"
+MINIO_ACCESS=$(docker compose -f docker-compose.dev.yml exec -T minio printenv MINIO_ROOT_USER 2>/dev/null | tr -d '\r\n' || echo "loreguard")
+MINIO_SECRET=$(docker compose -f docker-compose.dev.yml exec -T minio printenv MINIO_ROOT_PASSWORD 2>/dev/null | tr -d '\r\n' || echo "minio_password_here")
+
+# Use MinIO service name (minio) on the Docker network instead of localhost
+# Override entrypoint to use sh, then run mc commands
+if docker run --rm --network loreguard-network --entrypoint /bin/sh \
+    minio/mc:latest \
+    -c "
+        mc alias set local http://minio:9000 ${MINIO_ACCESS} ${MINIO_SECRET} && \
+        mc mb local/artifacts 2>/dev/null || true && \
+        mc mb local/evidence 2>/dev/null || true && \
+        mc mb local/models 2>/dev/null || true && \
+        mc mb local/exports 2>/dev/null || true && \
+        echo 'MinIO buckets ready'
+    " 2>&1; then
+    echo -e "${GREEN}✅ MinIO buckets created successfully${NC}"
+else
+    echo -e "${YELLOW}⚠️  MinIO bucket creation had issues, but continuing...${NC}"
+    echo -e "${YELLOW}   (Buckets may already exist or will be created on first use)${NC}"
+fi
 
 echo ""
 echo -e "${GREEN}🎉 Database initialization completed!${NC}"
@@ -240,12 +257,12 @@ echo ""
 echo -e "${BLUE}📊 Summary:${NC}"
 echo -e "   Database:     ${GREEN}✅ PostgreSQL ready${NC}"
 echo -e "   Schema:       ${GREEN}✅ Tables created${NC}"
-echo -e "   Admin User:   ${GREEN}✅ admin@airforcewargaming.com${NC}"
+   echo -e "   Admin User:   ${GREEN}✅ admin@loreguard.local${NC}"
 echo -e "   Object Store: ${GREEN}✅ MinIO buckets ready${NC}"
 echo -e "   Health Check: ${GREEN}✅ System functions working${NC}"
 echo ""
 echo -e "${BLUE}🔐 Admin Login:${NC}"
-echo -e "   Email:    ${YELLOW}admin@airforcewargaming.com${NC}"
-echo -e "   Password: ${YELLOW}LoreGuard2024!${NC}"
+   echo -e "   Email:    ${YELLOW}admin@loreguard.local${NC}"
+   echo -e "   Password: ${YELLOW}admin${NC}"
 echo ""
 

@@ -1,0 +1,56 @@
+# LoreGuard AI Assistant Service Dependencies
+# Context-aware chatbot with RAG and tool calling
+
+# Core Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Database and Storage
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+redis>=5.0.0
+boto3>=1.34.0  # Required for importing API service models
+psutil>=5.9.8  # Required for job monitoring service imports
+
+# LLM Integration
+openai>=1.0.0
+anthropic>=0.18.0
+tiktoken>=0.5.0  # Token counting for context management
+
+# HTTP and API
+httpx>=0.25.0
+requests>=2.31.0
+python-multipart>=0.0.6
+
+# Configuration and Environment
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+
+# Logging and Monitoring
+structlog>=23.2.0
+prometheus-client>=0.19.0
+
+# Vector Search and RAG (for semantic search of user data)
+sentence-transformers>=2.2.0
+faiss-cpu>=1.7.4  # Facebook AI Similarity Search for embeddings
+numpy>=1.24.0
+
+# Context Window Management
+langchain>=0.1.0  # For conversation management and summarization
+langchain-community>=0.0.10
+langchain-openai>=0.0.5
+
+# Utilities
+python-dateutil>=2.8.0
+pytz>=2023.3
+
+# Development and Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.12.0
+black>=23.11.0
+flake8>=6.1.0
+mypy>=1.7.0
+

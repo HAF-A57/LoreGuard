@@ -26,7 +26,12 @@ echo "  • Delete all database data"
 echo "  • Remove all logs and temporary files"
 echo "  • Reset the environment to initial state"
 echo ""
-read -p "Are you sure you want to continue? (type 'yes' to confirm): " confirm
+if [ -t 0 ]; then
+    read -p "Are you sure you want to continue? (type 'yes' to confirm): " confirm
+else
+    echo "Non-interactive mode detected. Use FORCE=1 to bypass confirmation."
+    [ "${FORCE:-0}" = "1" ] && confirm="yes" || confirm="no"
+fi
 
 if [[ "$confirm" != "yes" ]]; then
     echo -e "${BLUE}Reset cancelled.${NC}"
@@ -88,7 +93,11 @@ echo -e "${YELLOW}🐍 Removing Python virtual environments...${NC}"
 rm -rf apps/svc-api/venv
 
 # Remove Node.js node_modules (optional)
-read -p "Remove Node.js dependencies? This will require reinstalling (y/N): " remove_node
+    if [ -t 0 ]; then
+        read -p "Remove Node.js dependencies? This will require reinstalling (y/N): " remove_node
+    else
+        remove_node="N"
+    fi
 if [[ "$remove_node" =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}📦 Removing Node.js dependencies...${NC}"
     rm -rf apps/web/node_modules
@@ -97,7 +106,11 @@ fi
 
 # Remove .env file (optional)
 if [[ -f .env ]]; then
-    read -p "Remove .env file? You'll need to reconfigure (y/N): " remove_env
+    if [ -t 0 ]; then
+        read -p "Remove .env file? You'll need to reconfigure (y/N): " remove_env
+    else
+        remove_env="N"
+    fi
     if [[ "$remove_env" =~ ^[Yy]$ ]]; then
         echo -e "${YELLOW}⚙️  Removing environment configuration...${NC}"
         rm -f .env

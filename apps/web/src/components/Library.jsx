@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Input } from '@/components/ui/input.jsx'
@@ -17,64 +17,60 @@ import {
   ExternalLink,
   Archive,
   Trash2,
-  Plus
+  Plus,
+  Loader2,
+  AlertCircle
 } from 'lucide-react'
+import { API_URL } from '@/config.js'
 
 const Library = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedItems, setSelectedItems] = useState([])
+  const [libraryItems, setLibraryItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // Mock data for library items
-  const libraryItems = [
-    {
-      id: 1,
-      title: "NATO Strategic Assessment: Eastern European Defense Posture",
-      source: "NATO Strategic Communications Centre",
-      dateAdded: "2024-09-08",
-      confidence: 0.92,
-      tags: ["Defense", "NATO", "Eastern Europe", "Strategic"],
-      summary: "Comprehensive analysis of NATO's defensive capabilities and strategic positioning in Eastern Europe.",
-      category: "Military Strategy",
-      priority: "High"
-    },
-    {
-      id: 2,
-      title: "Economic Impact of Sanctions on Global Supply Chains",
-      source: "International Economic Forum",
-      dateAdded: "2024-09-07",
-      confidence: 0.87,
-      tags: ["Economics", "Supply Chain", "Sanctions", "Global"],
-      summary: "Detailed examination of how international sanctions affect global supply chain networks.",
-      category: "Economic Analysis",
-      priority: "High"
-    },
-    {
-      id: 3,
-      title: "Cybersecurity Threats in Critical Infrastructure",
-      source: "Cybersecurity Research Institute",
-      dateAdded: "2024-09-06",
-      confidence: 0.89,
-      tags: ["Cybersecurity", "Infrastructure", "Threats", "Critical"],
-      summary: "Analysis of emerging cybersecurity threats targeting critical infrastructure systems.",
-      category: "Cybersecurity",
-      priority: "Medium"
-    },
-    {
-      id: 4,
-      title: "Regional Stability Assessment: Middle East",
-      source: "International Relations Institute",
-      dateAdded: "2024-09-05",
-      confidence: 0.84,
-      tags: ["Middle East", "Stability", "Regional", "Politics"],
-      summary: "Comprehensive assessment of political and military stability in the Middle East region.",
-      category: "Regional Analysis",
-      priority: "Medium"
+  // Fetch Signal artifacts from library endpoint
+  useEffect(() => {
+    const fetchLibrary = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        // Fetch library items (Signal artifacts)
+        const response = await fetch(`${API_URL}/api/v1/library/?limit=100`)
+        if (!response.ok) throw new Error('Failed to fetch library')
+        const data = await response.json()
+        const items = data.items || []
+
+        // Enrich with evaluation data
+        const enrichedItems = items.map(item => ({
+          id: item.id,
+          title: item.title || `Artifact ${item.id.substring(0, 8)}`,
+          source: item.organization || 'Unknown Source',
+          dateAdded: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Unknown',
+          confidence: item.confidence || 0,
+          tags: item.topics || [],
+          summary: item.uri || 'No summary available',
+          category: "Defense",  // Placeholder
+          priority: item.confidence > 0.85 ? "High" : "Medium"
+        }))
+
+        setLibraryItems(enrichedItems)
+      } catch (err) {
+        console.error('Error fetching library:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
+
+    fetchLibrary()
+  }, [])
 
   const filteredItems = libraryItems.filter(item =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    item.tags.some(tag => tag && tag.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   const toggleSelection = (itemId) => {
@@ -85,23 +81,50 @@ const Library = () => {
     )
   }
 
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading Signal library...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              <span>Error Loading Library</span>
+            </CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="h-full flex flex-col">
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold">Signal Library</h1>
+            <h1 className="text-3xl font-bold">Signal Library<span className="placeholder-indicator">⭐</span></h1>
             <p className="text-muted-foreground">Curated high-value artifacts for distribution</p>
           </div>
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm">
               <Archive className="h-4 w-4 mr-2" />
-              Export Selected
+              Export Selected<span className="placeholder-indicator">⭐</span>
             </Button>
             <Button size="sm">
               <Plus className="h-4 w-4 mr-2" />
-              Add to Library
+              Add to Library<span className="placeholder-indicator">⭐</span>
             </Button>
           </div>
         </div>
@@ -119,7 +142,7 @@ const Library = () => {
           </div>
           <Button variant="outline" size="sm">
             <Filter className="h-4 w-4 mr-2" />
-            Filters
+            Filters<span className="placeholder-indicator">⭐</span>
           </Button>
         </div>
       </div>
@@ -146,15 +169,15 @@ const Library = () => {
               <span className="text-sm text-muted-foreground">{selectedItems.length} selected</span>
               <Button variant="outline" size="sm">
                 <Share className="h-4 w-4 mr-2" />
-                Share
+                Share<span className="placeholder-indicator">⭐</span>
               </Button>
               <Button variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
-                Download
+                Download<span className="placeholder-indicator">⭐</span>
               </Button>
               <Button variant="outline" size="sm">
                 <Trash2 className="h-4 w-4 mr-2" />
-                Remove
+                Remove<span className="placeholder-indicator">⭐</span>
               </Button>
             </div>
           )}
@@ -162,17 +185,18 @@ const Library = () => {
       </div>
 
       {/* Library Items */}
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
+      <div className="flex-1 min-h-0">
+        <ScrollArea className="h-full max-h-[calc(100vh-20rem)]">
           <div className="p-6 space-y-4">
             {filteredItems.map((item) => (
               <Card 
                 key={item.id} 
-                className={`aulendur-hover-transform cursor-pointer transition-all ${
+                className={`aulendur-hover-transform cursor-pointer transition-all relative ${
                   selectedItems.includes(item.id) ? 'ring-2 ring-primary' : ''
                 }`}
                 onClick={() => toggleSelection(item.id)}
               >
+                <span className="placeholder-card-indicator">⭐</span>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

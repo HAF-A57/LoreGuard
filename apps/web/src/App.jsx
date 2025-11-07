@@ -30,6 +30,7 @@ import Login from './components/Login.jsx'
 import LoadingScreen from './components/LoadingScreen.jsx'
 import NotFound from './components/NotFound.jsx'
 import AIAssistant from './components/AIAssistant.jsx'
+import { Toaster } from './components/ui/sonner.jsx'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
@@ -169,11 +170,11 @@ function App() {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
         {/* Left Sidebar */}
-        <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col`}>
+        <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col flex-shrink-0 h-full overflow-hidden`}>
           {/* Logo Section */}
-          <div className="p-6 border-b border-sidebar-border">
+          <div className="p-6 border-b border-sidebar-border flex-shrink-0">
             <div className="flex items-center justify-center">
               {!sidebarCollapsed ? (
                 <div className="flex flex-col items-center">
@@ -192,7 +193,7 @@ function App() {
             </div>
           </div>
           
-          <nav className="flex-1 p-4">
+          <nav className="flex-1 p-4 overflow-y-auto">
             <ul className="space-y-2">
               {navigation.map((item) => {
                 const Icon = item.icon
@@ -219,9 +220,11 @@ function App() {
           </nav>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-hidden">
-          <CurrentComponent />
+        {/* Main Content - Scrollable */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden h-full">
+          <div className="min-h-full">
+            <CurrentComponent />
+          </div>
         </main>
 
         {/* Right Sidebar - AI Assistant */}
@@ -230,6 +233,9 @@ function App() {
           onToggleCollapse={() => setAssistantCollapsed(!assistantCollapsed)}
         />
       </div>
+      
+      {/* Toast Notifications */}
+      <Toaster />
     </div>
   )
 }

@@ -212,3 +212,57 @@
 .header-title {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
+
+/* Ensure modals and dialogs can scroll properly */
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"] {
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+}
+
+/* Ensure main content area scrolls properly */
+main {
+  scroll-behavior: smooth;
+}
+
+/* Prevent body scroll when modal is open */
+body:has([data-slot="dialog-overlay"]:not([data-state="closed"])) {
+  overflow: hidden;
+}
+
+/* Placeholder indicator - glowing purple asterisk */
+.placeholder-indicator {
+  display: inline-block;
+  color: #a855f7;
+  font-weight: bold;
+  font-size: 0.875rem;
+  margin-left: 0.25rem;
+  animation: glow-pulse 2s ease-in-out infinite;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.8), 0 0 12px rgba(168, 85, 247, 0.6);
+  vertical-align: middle;
+  line-height: 1;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 8px rgba(168, 85, 247, 0.8), 0 0 12px rgba(168, 85, 247, 0.6);
+  }
+  50% {
+    opacity: 0.7;
+    text-shadow: 0 0 12px rgba(168, 85, 247, 1), 0 0 16px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.6);
+  }
+}
+
+/* Placeholder indicator for cards/tiles */
+.placeholder-card-indicator {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: #a855f7;
+  font-weight: bold;
+  font-size: 0.875rem;
+  animation: glow-pulse 2s ease-in-out infinite;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.8), 0 0 12px rgba(168, 85, 247, 0.6);
+  z-index: 10;
+}

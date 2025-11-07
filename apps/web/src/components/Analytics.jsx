@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Progress } from '@/components/ui/progress.jsx'
@@ -14,61 +15,139 @@ import {
   Award,
   Activity,
   MapPin,
-  Calendar
+  Calendar,
+  Loader2,
+  AlertCircle
 } from 'lucide-react'
+import { API_URL } from '@/config.js'
 
 const Analytics = () => {
-  // Mock data for analytics
-  const performanceMetrics = {
-    totalArtifacts: 45892,
-    signalRate: 12.3,
-    avgProcessingTime: 2.4,
-    accuracyRate: 94.2,
-    sourcesActive: 47,
-    avgConfidence: 78.6
-  }
+  const [performanceMetrics, setPerformanceMetrics] = useState({
+    totalArtifacts: 0,
+    signalRate: 0,
+    avgProcessingTime: 2.4, // Placeholder
+    accuracyRate: 0,
+    sourcesActive: 0,
+    avgConfidence: 0
+  })
+  const [topSources, setTopSources] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const topSources = [
-    { name: "NATO Strategic Communications", artifacts: 8934, signalRate: 15.2, avgConfidence: 82.1 },
-    { name: "International Economic Forum", artifacts: 6721, signalRate: 11.8, avgConfidence: 79.3 },
-    { name: "Cybersecurity Research Institute", artifacts: 5643, signalRate: 14.7, avgConfidence: 81.5 },
-    { name: "Defense Policy Institute", artifacts: 4892, signalRate: 9.4, avgConfidence: 76.8 },
-    { name: "Regional Security Council", artifacts: 3756, signalRate: 13.1, avgConfidence: 80.2 }
-  ]
+  // Fetch analytics data
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true)
+        setError(null)
 
+        // Fetch artifacts count
+        const artifactsResponse = await fetch(`${API_URL}/api/v1/artifacts/?limit=1`)
+        const artifactsData = await artifactsResponse.json()
+        const totalArtifacts = artifactsData.total || 0
+
+        // Fetch evaluations
+        const evaluationsResponse = await fetch(`${API_URL}/api/v1/evaluations/?limit=1000`)
+        const evaluationsData = await evaluationsResponse.json()
+        const evaluations = evaluationsData.items || []
+
+        // Fetch sources
+        const sourcesResponse = await fetch(`${API_URL}/api/v1/sources/`)
+        const sourcesData = await sourcesResponse.json()
+        const sources = sourcesData.items || []
+
+        // Calculate metrics
+        const signalCount = evaluations.filter(e => e.label === 'Signal').length
+        const signalRate = totalArtifacts > 0 ? ((signalCount / totalArtifacts) * 100).toFixed(1) : 0
+        const avgConfidence = evaluations.length > 0
+          ? evaluations.reduce((sum, e) => sum + (parseFloat(e.confidence) || 0), 0) / evaluations.length * 100
+          : 0
+        const accuracyRate = evaluations.length > 0
+          ? ((evaluations.filter(e => e.label === 'Signal' || e.label === 'Review').length / evaluations.length) * 100).toFixed(1)
+          : 0
+        const sourcesActive = sources.filter(s => s.status === 'active').length
+
+        setPerformanceMetrics({
+          totalArtifacts,
+          signalRate: parseFloat(signalRate),
+          avgProcessingTime: 2.4, // Placeholder
+          accuracyRate: parseFloat(accuracyRate),
+          sourcesActive,
+          avgConfidence: avgConfidence.toFixed(1)
+        })
+
+        // Calculate top sources
+        const sourcesWithCounts = sources
+          .map(s => ({
+            name: s.name,
+            artifacts: s.document_count || 0,
+            signalRate: 12.0, // Placeholder
+            avgConfidence: avgConfidence.toFixed(1)
+          }))
+          .sort((a, b) => b.artifacts - a.artifacts)
+          .slice(0, 5)
+
+        setTopSources(sourcesWithCounts)
+
+      } catch (err) {
+        console.error('Error fetching analytics:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAnalytics()
+  }, [])
+
+  // Placeholder data for features not yet calculated
   const topicDistribution = [
-    { topic: "Defense & Security", count: 12847, percentage: 28.0, trend: "+5.2%" },
-    { topic: "Economic Analysis", count: 9234, percentage: 20.1, trend: "+2.8%" },
-    { topic: "Cybersecurity", count: 7891, percentage: 17.2, trend: "+8.1%" },
-    { topic: "Regional Politics", count: 6543, percentage: 14.3, trend: "-1.4%" },
-    { topic: "Technology", count: 4892, percentage: 10.7, trend: "+12.3%" },
-    { topic: "Other", count: 4485, percentage: 9.8, trend: "+0.9%" }
+    { topic: "Defense & Security", count: 0, percentage: 0, trend: "N/A" },
   ]
 
   const geographicDistribution = [
-    { region: "Europe", count: 15234, percentage: 33.2, signalRate: 13.8 },
-    { region: "North America", count: 12891, percentage: 28.1, signalRate: 11.2 },
-    { region: "Asia-Pacific", count: 8934, percentage: 19.5, signalRate: 12.9 },
-    { region: "Middle East", count: 5643, percentage: 12.3, signalRate: 14.7 },
-    { region: "Africa", count: 2134, percentage: 4.7, signalRate: 10.3 },
-    { region: "South America", count: 1056, percentage: 2.3, signalRate: 9.1 }
+    { region: "Not tracked yet", count: 0, percentage: 0, signalRate: 0 }
   ]
 
   const weeklyTrends = [
-    { week: "Week 1", artifacts: 8934, signals: 1098, accuracy: 93.2 },
-    { week: "Week 2", artifacts: 9234, signals: 1156, accuracy: 94.1 },
-    { week: "Week 3", artifacts: 8756, signals: 1089, accuracy: 93.8 },
-    { week: "Week 4", artifacts: 9567, signals: 1234, accuracy: 94.7 }
+    { week: "Week 1", artifacts: 0, signals: 0, accuracy: 0 }
   ]
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading analytics...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              <span>Error Loading Analytics</span>
+            </CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground">Performance metrics and insights</p>
-        </div>
+                <div>
+                  <h1 className="text-3xl font-bold">Analytics</h1>
+                  <p className="text-muted-foreground">Performance metrics and insights</p>
+                </div>
         <div className="flex items-center space-x-2 bg-primary/10 rounded-lg px-3 py-2">
           <TrendingUp className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Performance Trending Up</span>
@@ -99,7 +178,8 @@ const Analytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
+        <Card className="aulendur-hover-transform relative">
+          <span className="placeholder-card-indicator">⭐</span>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Processing Speed</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -192,7 +272,8 @@ const Analytics = () => {
         </TabsContent>
 
         <TabsContent value="topics" className="space-y-6">
-          <Card className="aulendur-gradient-card">
+          <Card className="aulendur-gradient-card relative">
+            <span className="placeholder-card-indicator">⭐</span>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Activity className="h-5 w-5" />
@@ -225,7 +306,8 @@ const Analytics = () => {
         </TabsContent>
 
         <TabsContent value="geography" className="space-y-6">
-          <Card className="aulendur-gradient-card">
+          <Card className="aulendur-gradient-card relative">
+            <span className="placeholder-card-indicator">⭐</span>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="h-5 w-5" />
@@ -262,7 +344,8 @@ const Analytics = () => {
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">
-          <Card className="aulendur-gradient-card">
+          <Card className="aulendur-gradient-card relative">
+            <span className="placeholder-card-indicator">⭐</span>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Calendar className="h-5 w-5" />

@@ -61,7 +61,7 @@ const Login = ({ onLogin }) => {
         {/* Login Card */}
         <Card className="aulendur-gradient-card shadow-2xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl">Welcome Back<span className="placeholder-indicator">⭐</span></CardTitle>
             <CardDescription>Sign in to access your LoreGuard dashboard</CardDescription>
           </CardHeader>
           <CardContent>
@@ -117,10 +117,10 @@ const Login = ({ onLogin }) => {
               <div className="flex items-center justify-between text-sm">
                 <label className="flex items-center space-x-2">
                   <input type="checkbox" className="rounded" />
-                  <span>Remember me</span>
+                  <span>Remember me<span className="placeholder-indicator">⭐</span></span>
                 </label>
                 <Button variant="link" className="p-0 h-auto text-primary">
-                  Forgot password?
+                  Forgot password?<span className="placeholder-indicator">⭐</span>
                 </Button>
               </div>
 
@@ -135,7 +135,9 @@ const Login = ({ onLogin }) => {
                     <span>Signing in...</span>
                   </div>
                 ) : (
-                  'Sign In'
+                  <>
+                    Sign In<span className="placeholder-indicator">⭐</span>
+                  </>
                 )}
               </Button>
             </form>
@@ -147,7 +149,7 @@ const Login = ({ onLogin }) => {
                 Need access to LoreGuard?
               </p>
               <Button variant="outline" className="w-full">
-                Request Access
+                Request Access<span className="placeholder-indicator">⭐</span>
               </Button>
             </div>
           </CardContent>

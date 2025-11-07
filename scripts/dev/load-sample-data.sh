@@ -439,8 +439,9 @@ echo ""
 echo -e "${GREEN}🎉 Sample data loading completed!${NC}"
 echo ""
 echo -e "${BLUE}🌐 Test the data:${NC}"
-echo -e "   View sources:    ${YELLOW}curl http://localhost:8000/api/v1/test/sources-simple${NC}"
-echo -e "   View artifacts:  ${YELLOW}curl http://localhost:8000/api/v1/test/artifacts-simple${NC}"
-echo -e "   Frontend UI:     ${YELLOW}http://localhost:5173${NC}"
+HOST_IP=${LOREGUARD_HOST_IP:-localhost}
+echo -e "   View sources:    ${YELLOW}curl http://${HOST_IP}:8000/api/v1/test/sources-simple${NC}"
+echo -e "   View artifacts:  ${YELLOW}curl http://${HOST_IP}:8000/api/v1/test/artifacts-simple${NC}"
+echo -e "   Frontend UI:     ${YELLOW}http://${HOST_IP}:6060${NC}"
 echo ""
 

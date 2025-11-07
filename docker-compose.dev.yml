@@ -1,7 +1,6 @@
-version: '3.8'
-
 # LoreGuard Development Environment
 # Docker Compose configuration for local development
+# Note: version field removed for Docker Compose v2 compatibility
 
 services:
   # PostgreSQL Database
@@ -14,7 +13,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
-      - "5432:5432"
+      - "${LOREGUARD_HOST_IP:-0.0.0.0}:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/dev/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -33,7 +32,7 @@ services:
     container_name: loreguard-redis
     command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password_here} --appendonly yes
     ports:
-      - "6379:6379"
+      - "${LOREGUARD_HOST_IP:-0.0.0.0}:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -52,15 +51,15 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-loreguard}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minio_password_here}
-      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+      MINIO_BROWSER_REDIRECT_URL: http://${LOREGUARD_HOST_IP:-localhost}:9001
     ports:
-      - "9000:9000"  # API port
-      - "9001:9001"  # Console port
+      - "${LOREGUARD_HOST_IP:-0.0.0.0}:9000:9000"  # API port
+      - "${LOREGUARD_HOST_IP:-0.0.0.0}:9001:9001"  # Console port
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/ready"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -73,8 +72,8 @@ services:
     image: temporalio/auto-setup:1.22
     container_name: loreguard-temporal
     ports:
-      - "7233:7233"
-      - "8233:8233"
+      - "${LOREGUARD_HOST_IP:-0.0.0.0}:7233:7233"
+      - "${LOREGUARD_HOST_IP:-0.0.0.0}:8233:8233"
     environment:
       - DB=postgresql
       - POSTGRES_SEEDS=postgres
@@ -94,7 +93,7 @@ services:
     image: libretranslate/libretranslate:latest
     container_name: loreguard-translate
     ports:
-      - "5000:5000"
+      - "${LOREGUARD_HOST_IP:-0.0.0.0}:5000:5000"
     environment:
       - LT_LOAD_ONLY=en,zh,ru,ar,es,fr,de,ja,ko,fa,ur,hi
     volumes:
@@ -110,7 +109,7 @@ services:
     image: nextcloud:28-apache
     container_name: loreguard-nextcloud
     ports:
-      - "8080:80"
+      - "${LOREGUARD_HOST_IP:-0.0.0.0}:8080:80"
     environment:
       - POSTGRES_DB=nextcloud
       - POSTGRES_USER=nextcloud
@@ -157,7 +156,7 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
-      - "5050:80"
+      - "${LOREGUARD_HOST_IP:-0.0.0.0}:5050:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
@@ -178,7 +177,7 @@ services:
       HTTP_USER: admin
       HTTP_PASSWORD: ${REDIS_PASSWORD:-redis_password_here}
     ports:
-      - "8081:8081"
+      - "${LOREGUARD_HOST_IP:-0.0.0.0}:8081:8081"
     depends_on:
       redis:
         condition: service_healthy
@@ -187,6 +186,222 @@ services:
       - loreguard-network
     profiles:
       - tools  # Only start with --profile tools
+
+  # LoreGuard API Service
+  loreguard-api:
+    build:
+      context: ./apps/svc-api
+      dockerfile: Dockerfile
+    container_name: loreguard-api
+    environment:
+      # Database
+      DATABASE_URL: postgresql://loreguard:${POSTGRES_PASSWORD:-secure_password_here}@postgres:5432/loreguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password_here}@redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password_here}
+      # MinIO
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-loreguard}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio_password_here}
+      # API Configuration
+      PORT: 8000
+      DEBUG: "true"
+      LOG_LEVEL: INFO
+      # CORS - Use detected IP for frontend access (comma-separated string)
+      BACKEND_CORS_ORIGINS: "http://${LOREGUARD_HOST_IP:-localhost}:6060,http://${LOREGUARD_HOST_IP:-localhost}:5173,http://${LOREGUARD_HOST_IP:-localhost}:3000,http://localhost:6060,http://localhost:5173,http://localhost:3000"
+      # LLM Configuration (optional, can be set via UI)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-gpt-4}
+      # Temporal (if using workflow orchestration)
+      TEMPORAL_HOST: temporal-server
+      TEMPORAL_PORT: 7233
+    ports:
+      - "0.0.0.0:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      # Mount code for development (optional - comment out for production)
+      - ./apps/svc-api/app:/app/app:ro
+      # Mount ingestion service for scrapy invocation (API service spawns scrapy processes)
+      - ./apps/svc-ingestion:/app/svc-ingestion:ro
+      # Mount logs directory
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - loreguard-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # LoreGuard Normalize Service
+  loreguard-normalize:
+    build:
+      context: ./apps/svc-normalize
+      dockerfile: Dockerfile
+    container_name: loreguard-normalize
+    environment:
+      # Database
+      DATABASE_URL: postgresql://loreguard:${POSTGRES_PASSWORD:-secure_password_here}@postgres:5432/loreguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password_here}@redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password_here}
+      # MinIO (normalize service uses S3_ENDPOINT_URL instead of MINIO_ENDPOINT)
+      MINIO_ENDPOINT: minio:9000
+      S3_ENDPOINT_URL: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-loreguard}
+      S3_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-loreguard}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio_password_here}
+      S3_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:-minio_password_here}
+      # Service Configuration
+      PORT: 8001
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+      # CORS
+      BACKEND_CORS_ORIGINS: http://${LOREGUARD_HOST_IP:-localhost}:6060,http://${LOREGUARD_HOST_IP:-localhost}:5173,http://localhost:6060,http://localhost:5173
+      ALLOWED_HOSTS: "*"
+    ports:
+      - "0.0.0.0:8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      # Mount code for development (optional - comment out for production)
+      - ./apps/svc-normalize/app:/app/app:ro
+      # Mount logs directory
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - loreguard-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # LoreGuard Ingestion Service (Scrapy-based web crawler)
+  loreguard-ingestion:
+    build:
+      context: ./apps/svc-ingestion
+      dockerfile: Dockerfile
+    container_name: loreguard-ingestion
+    environment:
+      # Database
+      DATABASE_URL: postgresql://loreguard:${POSTGRES_PASSWORD:-secure_password_here}@postgres:5432/loreguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password_here}@redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password_here}
+      # MinIO
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-loreguard}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio_password_here}
+      # Service Configuration
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+      # External service URLs
+      NORMALIZE_SERVICE_URL: http://loreguard-normalize:8001
+      API_SERVICE_URL: http://loreguard-api:8000
+      # Playwright configuration
+      PLAYWRIGHT_BROWSERS_PATH: /home/loreguard/.cache/ms-playwright
+      # Python path to include API service for database models
+      PYTHONPATH: /app/svc-api-app:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      loreguard-api:
+        condition: service_healthy
+      loreguard-normalize:
+        condition: service_healthy
+    volumes:
+      # Mount code for development (optional - comment out for production)
+      - ./apps/svc-ingestion/app:/app/app:ro
+      # Mount API service code for database model access
+      - ./apps/svc-api/app:/app/svc-api-app:ro
+      # Mount logs directory
+      - ./logs:/app/logs
+      # Mount cache directory for Scrapy HTTP cache
+      - ingestion_cache:/app/httpcache
+    restart: unless-stopped
+    networks:
+      - loreguard-network
+    # Note: This service doesn't expose a port as it's invoked via scrapy commands
+    # It can be invoked via: docker exec loreguard-ingestion scrapy crawl <spider> -a <args>
+    # Or configured as a worker that listens for jobs via message queue
+
+  # LoreGuard AI Assistant Service
+  loreguard-assistant:
+    build:
+      context: ./apps/svc-assistant
+      dockerfile: Dockerfile
+    container_name: loreguard-assistant
+    environment:
+      # Database (uses separate DB for chat sessions)
+      DATABASE_URL: postgresql://loreguard:${POSTGRES_PASSWORD:-secure_password_here}@postgres:5432/loreguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password_here}@redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password_here}
+      # Service Configuration
+      SERVICE_NAME: loreguard-assistant
+      PORT: 8002
+      HOST: 0.0.0.0
+      DEBUG: "true"
+      LOG_LEVEL: INFO
+      # CORS (comma-separated string)
+      BACKEND_CORS_ORIGINS: "http://${LOREGUARD_HOST_IP:-localhost}:6060,http://${LOREGUARD_HOST_IP:-localhost}:5173,http://localhost:6060,http://localhost:5173"
+      # LLM Configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-gpt-4}
+      # API URL for tool calling (points to API service)
+      API_URL: http://loreguard-api:8000
+      # Python path to include API service for database models
+      PYTHONPATH: /app/svc-api-app:/app
+    ports:
+      - "0.0.0.0:8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      loreguard-api:
+        condition: service_healthy
+    volumes:
+      # Mount code for development (optional - comment out for production)
+      - ./apps/svc-assistant/app:/app/app:ro
+      # Mount API service code for database model access (exclude main.py to prevent accidental imports)
+      - ./apps/svc-api/app:/app/svc-api-app:ro
+      # Mount logs directory
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - loreguard-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 # Named volumes for data persistence
 volumes:
@@ -217,6 +432,10 @@ volumes:
   pgadmin_data:
     driver: local
     name: loreguard_pgadmin_data
+  
+  ingestion_cache:
+    driver: local
+    name: loreguard_ingestion_cache
 
 # Custom network for service communication
 networks:
