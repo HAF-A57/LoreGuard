@@ -16,14 +16,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Load environment variables
+# Load environment variables from .env (single source of truth)
 if [[ -f .env ]]; then
     source .env
-fi
-
-# Load detected IP if available
-if [[ -f .env.detected ]]; then
-    source .env.detected
 fi
 
 echo -e "${BLUE}📋 Checking database connection...${NC}"

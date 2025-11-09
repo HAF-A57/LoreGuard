@@ -507,7 +507,7 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="flex-1"
+            className="flex-1 bg-sidebar-accent/20 text-sidebar-foreground placeholder:text-sidebar-foreground/60 border-sidebar-border focus-visible:ring-sidebar-ring"
             disabled={isTyping}
           />
           <Button 

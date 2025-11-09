@@ -13,18 +13,8 @@ from pathlib import Path
 # Project root: config.py -> core -> app -> svc-normalize -> apps -> LoreGuard (5 levels up)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
-# Load .env.detected manually before creating Settings instance
-# This ensures LOREGUARD_HOST_IP is available for default value calculations
-env_detected_path = PROJECT_ROOT / ".env.detected"
-if env_detected_path.exists():
-    with open(env_detected_path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith('#') and '=' in line:
-                key, value = line.split('=', 1)
-                # Only set if not already in environment
-                if key not in os.environ:
-                    os.environ[key] = value
+# Note: LOREGUARD_HOST_IP is loaded from .env file via Pydantic Settings below
+# No manual loading needed - Pydantic handles it automatically
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -312,12 +302,11 @@ class Settings(BaseSettings):
     TEST_DATABASE_URL: Optional[str] = Field(default=None, env="TEST_DATABASE_URL")
     
     class Config:
-        # Look for .env files in project root first, then locally
+        # Single source of truth: .env file in project root
+        # Docker Compose and all services read from this file
         env_file = [
-            str(PROJECT_ROOT / ".env.detected"),  # Project root .env.detected
-            str(PROJECT_ROOT / ".env"),           # Project root .env
-            ".env.detected",                      # Local .env.detected
-            ".env"                                # Local .env
+            str(PROJECT_ROOT / ".env"),  # Project root .env (single source of truth)
+            ".env"                       # Local .env (fallback for service-specific overrides)
         ]
         case_sensitive = True
         extra = "ignore"  # Ignore extra fields from .env files

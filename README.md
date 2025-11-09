@@ -302,7 +302,7 @@ LoreGuard/
 
 ### Environment Variables
 
-LoreGuard uses automatic IP detection via `make detect-ip`, which creates `.env.detected` with your network IP. For manual configuration, you can create a `.env` file from `.env.template`.
+LoreGuard uses automatic IP detection via `make detect-ip`, which updates the `.env` file with your network IP. For manual configuration, you can create a `.env` file from `.env.template`.
 
 **Key Configuration Options:**
 

@@ -1,6 +1,12 @@
 # LoreGuard Development Environment
 # Docker Compose configuration for local development
 # Note: version field removed for Docker Compose v2 compatibility
+#
+# Environment Variables:
+#   Docker Compose automatically reads .env file from the project root
+#   The detect-ip.sh script automatically updates .env with LOREGUARD_HOST_IP
+#   All services use ${LOREGUARD_HOST_IP:-0.0.0.0} for port bindings
+#   Run 'make detect-ip' or 'make quick-start' to ensure IP is detected
 
 services:
   # PostgreSQL Database

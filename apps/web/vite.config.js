@@ -9,11 +9,12 @@ export default defineConfig(({ mode }) => {
   // Load env files with proper priority
   const env = loadEnv(mode, process.cwd(), '')
   
-  // Also try to load from parent .env.detected if it exists
-  const envDetectedPath = path.resolve(__dirname, '../../.env.detected')
-  if (fs.existsSync(envDetectedPath)) {
-    const envDetected = fs.readFileSync(envDetectedPath, 'utf-8')
-    const lines = envDetected.split('\n')
+  // Also try to load from parent .env file (single source of truth)
+  // This allows Vite to access LOREGUARD_* variables from the root .env
+  const envRootPath = path.resolve(__dirname, '../../.env')
+  if (fs.existsSync(envRootPath)) {
+    const envRoot = fs.readFileSync(envRootPath, 'utf-8')
+    const lines = envRoot.split('\n')
     
     for (const line of lines) {
       const trimmed = line.trim()
@@ -21,7 +22,7 @@ export default defineConfig(({ mode }) => {
         const [key, ...valueParts] = trimmed.split('=')
         const value = valueParts.join('=')
         
-        // Convert LOREGUARD_ prefixed vars to VITE_ prefixed
+        // Convert LOREGUARD_ prefixed vars to VITE_ prefixed for Vite
         if (key === 'LOREGUARD_API_URL' && !env.VITE_API_URL) {
           env.VITE_API_URL = value
         } else if (key === 'LOREGUARD_HOST_IP' && !env.VITE_HOST_IP) {

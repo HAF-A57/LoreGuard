@@ -21,8 +21,9 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Load environment
-if [[ -f .env.detected ]]; then
-    source .env.detected
+# Load environment variables from .env (single source of truth)
+if [[ -f .env ]]; then
+    source .env
 fi
 
 LOREGUARD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -141,13 +142,8 @@ if [ "$WEB_ONLY" = "false" ]; then
         exit 1
     }
 
-    # Export environment variables (load both .env.detected and .env)
+    # Export environment variables from .env (single source of truth)
     # Use 'source' with set -a to properly handle all variable formats
-    if [ -f "$LOREGUARD_ROOT/.env.detected" ]; then
-        set -a
-        source "$LOREGUARD_ROOT/.env.detected" 2>/dev/null || true
-        set +a
-    fi
     if [ -f "$LOREGUARD_ROOT/.env" ]; then
         set -a
         source "$LOREGUARD_ROOT/.env" 2>/dev/null || true
@@ -239,13 +235,8 @@ pip install -r requirements.txt -q >/dev/null 2>&1 || {
     exit 1
 }
 
-# Export environment variables (load both .env.detected and .env)
+# Export environment variables from .env (single source of truth)
 # Only export lines that match KEY=VALUE format (skip comments and invalid lines)
-if [ -f "$LOREGUARD_ROOT/.env.detected" ]; then
-    set -a
-    source "$LOREGUARD_ROOT/.env.detected" 2>/dev/null || true
-    set +a
-fi
 if [ -f "$LOREGUARD_ROOT/.env" ]; then
     set -a
     source "$LOREGUARD_ROOT/.env" 2>/dev/null || true
@@ -322,12 +313,7 @@ pip install -r requirements.txt -q >/dev/null 2>&1 || {
     exit 1
 }
 
-# Export environment variables
-if [ -f "$LOREGUARD_ROOT/.env.detected" ]; then
-    set -a
-    source "$LOREGUARD_ROOT/.env.detected" 2>/dev/null || true
-    set +a
-fi
+# Export environment variables from .env (single source of truth)
 if [ -f "$LOREGUARD_ROOT/.env" ]; then
     set -a
     source "$LOREGUARD_ROOT/.env" 2>/dev/null || true
@@ -371,13 +357,8 @@ if [ ! -d node_modules ]; then
     }
 fi
 
-# Export environment variables
+# Export environment variables from .env (single source of truth)
 # Use 'source' with set -a to properly handle all variable formats
-if [ -f "$LOREGUARD_ROOT/.env.detected" ]; then
-    set -a
-    source "$LOREGUARD_ROOT/.env.detected" 2>/dev/null || true
-    set +a
-fi
 
 # Check if port is already in use
 if check_port 6060; then

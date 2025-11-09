@@ -8,19 +8,11 @@ with anti-bot evasion and performance optimization.
 import os
 from pathlib import Path
 
-# Load .env.detected from project root to get LOREGUARD_HOST_IP
 # Path: settings.py -> app -> svc-ingestion -> apps -> LoreGuard (4 levels up)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-env_detected_path = PROJECT_ROOT / ".env.detected"
-if env_detected_path.exists():
-    with open(env_detected_path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith('#') and '=' in line:
-                key, value = line.split('=', 1)
-                # Only set if not already in environment
-                if key not in os.environ:
-                    os.environ[key] = value
+
+# Note: LOREGUARD_HOST_IP is loaded from .env file (single source of truth)
+# Environment variables are set via Docker Compose or .env file
 
 # Scrapy settings for loreguard-ingestion project
 BOT_NAME = 'loreguard-ingestion'

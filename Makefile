@@ -44,17 +44,18 @@ detect-ip:
 	@echo "Detecting host IP address..."
 	@bash scripts/detect-ip.sh
 	@echo ""
-	@echo "To use detected IP, source the .env.detected file:"
-	@echo "  source .env.detected"
+	@echo "To use detected IP, source the .env file:"
+	@echo "  source .env"
 
 # Check environment
 check-env:
 	@echo "Checking environment..."
-	@if [ ! -f .env.detected ]; then \
-		echo "Warning: .env.detected not found. Run 'make detect-ip' first."; \
+	@if [ ! -f .env ]; then \
+		echo "Warning: .env not found. Run 'make detect-ip' first (will create from .env.template)."; \
 	else \
-		echo "✓ IP detection file found"; \
-		cat .env.detected; \
+		echo "✓ Environment file found"; \
+		echo "IP configuration:"; \
+		grep LOREGUARD_HOST_IP .env 2>/dev/null || echo "  (IP not yet detected - run 'make detect-ip')"; \
 	fi
 	@if [ ! -f .env ]; then \
 		echo "Warning: .env file not found. Consider creating from .env.template"; \
@@ -75,8 +76,10 @@ check-env:
 # Quick start - full setup (infrastructure only)
 quick-start-infra: detect-ip check-env
 	@echo "Starting LoreGuard infrastructure..."
-	@if [ -f .env.detected ]; then \
-		export $$(cat .env.detected | grep -v '^#' | xargs); \
+	@# Load environment variables from .env (Docker Compose reads this automatically)
+	@# Also export for shell commands that need it
+	@if [ -f .env ]; then \
+		set -a && . $(CURDIR)/.env && set +a; \
 	fi
 	@echo "Starting infrastructure containers..."
 	@docker compose -f docker-compose.dev.yml up -d postgres redis minio
@@ -92,8 +95,10 @@ quick-start-infra: detect-ip check-env
 quick-start: quick-start-infra
 	@echo ""
 	@echo "🚀 Building and starting containerized backend services..."
-	@if [ -f .env.detected ]; then \
-		export $$(cat .env.detected | grep -v '^#' | xargs); \
+	@# Ensure IP is detected and loaded (detect-ip writes to .env which Docker Compose reads)
+	@# Also export for shell commands
+	@if [ -f .env ]; then \
+		set -a && . $(CURDIR)/.env && set +a; \
 	fi
 	@docker compose -f docker-compose.dev.yml build loreguard-api loreguard-normalize loreguard-assistant loreguard-ingestion
 	@docker compose -f docker-compose.dev.yml up -d loreguard-api loreguard-normalize loreguard-assistant loreguard-ingestion
@@ -101,8 +106,8 @@ quick-start: quick-start-infra
 	@echo "🚀 Starting frontend (local, for hot reload)..."
 	@bash scripts/dev/start-services.sh web-only
 	@echo ""
-	@if [ -f .env.detected ]; then \
-		HOST_IP=$$(grep LOREGUARD_HOST_IP .env.detected | cut -d= -f2); \
+	@if [ -f .env ]; then \
+		HOST_IP=$$(grep LOREGUARD_HOST_IP .env | cut -d= -f2); \
 		echo "═══════════════════════════════════════════════════════"; \
 		echo "  ✅ LoreGuard is now running!"; \
 		echo "═══════════════════════════════════════════════════════"; \
@@ -142,8 +147,10 @@ quick-start: quick-start-infra
 # Docker Compose commands
 up: detect-ip
 	@echo "Starting LoreGuard containers..."
-	@if [ -f .env.detected ]; then \
-		export $$(cat .env.detected | grep -v '^#' | xargs); \
+	@# Docker Compose automatically reads .env file (detect-ip writes to it)
+	@# Also export for shell commands that need it
+	@if [ -f .env ]; then \
+		set -a && . $(CURDIR)/.env && set +a; \
 	fi
 	@docker compose -f docker-compose.dev.yml up -d
 
@@ -213,8 +220,9 @@ stop-services:
 	@echo "Stopping application services..."
 	@mkdir -p logs
 	@echo "Stopping containerized backend services..."
-	@if [ -f .env.detected ]; then \
-		export $$(cat .env.detected | grep -v '^#' | xargs); \
+	@# Load environment variables if available
+	@if [ -f .env ]; then \
+		set -a && . $(CURDIR)/.env && set +a; \
 	fi
 	@docker compose -f docker-compose.dev.yml stop loreguard-api loreguard-normalize loreguard-assistant loreguard-ingestion 2>/dev/null || true
 	@echo "Stopping local frontend service..."
@@ -229,10 +237,12 @@ stop-services:
 	@echo "✓ Service stop complete"
 
 # Rebuild backend services (useful after code changes)
-rebuild-services:
+rebuild-services: detect-ip
 	@echo "Rebuilding backend service containers..."
-	@if [ -f .env.detected ]; then \
-		export $$(cat .env.detected | grep -v '^#' | xargs); \
+	@# Ensure IP is detected before building (Docker Compose reads .env automatically)
+	@# Also export for shell commands
+	@if [ -f .env ]; then \
+		set -a && . $(CURDIR)/.env && set +a; \
 	fi
 	@docker compose -f docker-compose.dev.yml build --no-cache loreguard-api loreguard-normalize loreguard-assistant loreguard-ingestion
 	@echo "✓ Services rebuilt. Restart with: docker compose -f docker-compose.dev.yml up -d loreguard-api loreguard-normalize loreguard-assistant loreguard-ingestion"
@@ -264,7 +274,7 @@ start-api:
 		. venv/bin/activate && \
 		pip install --upgrade pip -q && \
 		pip install -r requirements.txt -q && \
-		if [ -f .env.detected ]; then export $$(cat ../../.env.detected | grep -v '^#' | xargs); fi && \
+		if [ -f $(CURDIR)/.env ]; then set -a && . $(CURDIR)/.env && set +a; fi && \
 		python -m app.main
 
 start-normalize:
@@ -293,7 +303,7 @@ start-normalize:
 		. venv/bin/activate && \
 		pip install --upgrade pip -q && \
 		pip install -r requirements.txt -q && \
-		if [ -f .env.detected ]; then export $$(cat ../../.env.detected | grep -v '^#' | xargs); fi && \
+		if [ -f $(CURDIR)/.env ]; then set -a && . $(CURDIR)/.env && set +a; fi && \
 		python -m app.main
 
 start-assistant:
@@ -322,7 +332,7 @@ start-assistant:
 		. venv/bin/activate && \
 		pip install --upgrade pip -q && \
 		pip install -r requirements.txt -q && \
-		if [ -f ../../.env.detected ]; then export $$(cat ../../.env.detected | grep -v '^#' | xargs); fi && \
+		if [ -f $(CURDIR)/.env ]; then set -a && . $(CURDIR)/.env && set +a; fi && \
 		export PYTHONPATH=$$(cd ../svc-api && pwd):$$PYTHONPATH && \
 		python -m app.main
 
@@ -333,7 +343,7 @@ start-web:
 			echo "Installing dependencies..."; \
 			npm install; \
 		fi && \
-		if [ -f ../../.env.detected ]; then export $$(cat ../../.env.detected | grep -v '^#' | xargs); fi && \
+		if [ -f $(CURDIR)/.env ]; then set -a && . $(CURDIR)/.env && set +a; fi && \
 		npm run dev
 
 # Development tasks
@@ -352,6 +362,7 @@ lint:
 	@command -v flake8 >/dev/null && flake8 apps/svc-api apps/svc-normalize || echo "flake8 not installed"
 	@command -v eslint >/dev/null && eslint apps/web/src || echo "eslint not installed"
 
-# Load environment variables from detected IP
-include .env.detected
+# Note: Environment variables are loaded from .env file
+# Docker Compose reads .env automatically
+# Shell commands export from .env as needed
 

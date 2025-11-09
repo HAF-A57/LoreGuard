@@ -5,9 +5,9 @@
 
 set -e  # Exit on any error
 
-# Load detected IP if available
-if [[ -f .env.detected ]]; then
-    source .env.detected
+# Load environment variables from .env (single source of truth)
+if [[ -f .env ]]; then
+    source .env
 fi
 
 # Use detected IP or fallback to localhost

@@ -8,7 +8,13 @@ import os
 from typing import List, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings
+from pathlib import Path
 
+# Project root: config.py -> core -> app -> svc-assistant -> apps -> LoreGuard (5 levels up)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+
+# Note: LOREGUARD_HOST_IP is loaded from .env file via Pydantic Settings below
+# No manual loading needed - Pydantic handles it automatically
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -150,7 +156,12 @@ class Settings(BaseSettings):
     RELOAD: bool = Field(default=False, env="RELOAD")
     
     class Config:
-        env_file = [".env.detected", ".env"]
+        # Single source of truth: .env file in project root
+        # Docker Compose and all services read from this file
+        env_file = [
+            str(PROJECT_ROOT / ".env"),  # Project root .env (single source of truth)
+            ".env"                       # Local .env (fallback for service-specific overrides)
+        ]
         case_sensitive = True
         extra = "ignore"
 
