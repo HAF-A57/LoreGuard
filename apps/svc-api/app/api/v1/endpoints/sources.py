@@ -231,11 +231,17 @@ async def trigger_source_crawl(
     # Trigger crawl
     try:
         import logging
+        from datetime import datetime, timezone
         logger = logging.getLogger(__name__)
         logger.info(f"[ENDPOINT] About to call trigger_crawl for source {source.id}")
         job = crawl_service.trigger_crawl(source=source, db=db)
         logger.info(f"[ENDPOINT] trigger_crawl returned job {job.id}, status={job.status}")
         logger.info(f"[ENDPOINT] job.payload={job.payload}")
+        
+        # Update source last_run timestamp
+        source.last_run = datetime.now(timezone.utc)
+        db.commit()
+        logger.info(f"[ENDPOINT] Updated last_run for source {source.id}")
         
         return {
             "message": "Crawl triggered successfully",

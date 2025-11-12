@@ -139,7 +139,7 @@ const ArtifactSidebar = ({
       <ScrollArea className="flex-1 min-h-0 overflow-hidden">
         <div
           className="p-3 pr-8 space-y-2 w-full min-w-0 box-border overflow-x-hidden break-words"
-          style={{ overflowWrap: 'anywhere', maxWidth: '100%' }}
+          style={{ overflowWrap: 'anywhere', maxWidth: 'calc(100% - 12px)' }}
         >
           {/* Pagination Info */}
           {artifacts.length > 0 && (
