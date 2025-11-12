@@ -1,0 +1,108 @@
+{
+  "timestamp": "2025-11-11T18:27:27.448485",
+  "summary": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0
+  },
+  "results": [
+    {
+      "tool": "get_rubric_details (active)",
+      "success": true,
+      "details": "Retrieved active rubric: v0.2",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.306661"
+    },
+    {
+      "tool": "get_rubric_details (version: v0.1)",
+      "success": true,
+      "details": "Retrieved rubric by version",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.314071"
+    },
+    {
+      "tool": "search_artifacts (query: 'China')",
+      "success": true,
+      "details": "Found 3 artifacts",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.325658"
+    },
+    {
+      "tool": "search_artifacts (query: 'Brookings')",
+      "success": true,
+      "details": "Found 5 artifacts",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.333592"
+    },
+    {
+      "tool": "search_artifacts (query: 'test')",
+      "success": true,
+      "details": "Found 0 artifacts",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.335254"
+    },
+    {
+      "tool": "get_artifact_details",
+      "success": true,
+      "details": "Retrieved artifact: 2025 election wrap-up: Insights from Brookings | Brookings",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.342128"
+    },
+    {
+      "tool": "list_sources (filter: all)",
+      "success": true,
+      "details": "Found 2 sources",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.351451"
+    },
+    {
+      "tool": "list_sources (filter: active)",
+      "success": true,
+      "details": "Found 2 sources",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.359547"
+    },
+    {
+      "tool": "list_sources (filter: paused)",
+      "success": true,
+      "details": "Found 0 sources",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.365220"
+    },
+    {
+      "tool": "get_job_status",
+      "success": true,
+      "details": "Retrieved job: ingest (failed)",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.372964"
+    },
+    {
+      "tool": "list_active_jobs",
+      "success": true,
+      "details": "Found 0 active jobs",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.380903"
+    },
+    {
+      "tool": "get_system_health",
+      "success": true,
+      "details": "API: healthy, Normalize: healthy",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.443710"
+    },
+    {
+      "tool": "trigger_source_crawl",
+      "success": true,
+      "details": "Test skipped (would trigger actual crawl)",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.447380"
+    },
+    {
+      "tool": "evaluate_artifact",
+      "success": true,
+      "details": "Test skipped (would trigger actual evaluation)",
+      "error": null,
+      "timestamp": "2025-11-11T18:27:27.448305"
+    }
+  ]
+}

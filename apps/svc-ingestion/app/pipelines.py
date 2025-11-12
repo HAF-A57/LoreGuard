@@ -334,8 +334,8 @@ class DatabaseStoragePipeline:
             
             logger.debug(f"Stored artifact: {item['uri']} (ID: {artifact.id})")
             
-            # Trigger normalization service (async, don't block on errors)
-            self._trigger_normalization(artifact.id, spider)
+            # Note: Normalization is triggered by ObjectStoragePipeline after content is stored
+            # This ensures content is available in MinIO before normalization attempts to fetch it
             
         except Exception as e:
             session.rollback()
@@ -346,6 +346,34 @@ class DatabaseStoragePipeline:
     def _trigger_normalization(self, artifact_id: str, spider):
         """Trigger normalization service for newly stored artifact"""
         try:
+            # Try to use Celery task queue first (preferred method)
+            use_queue = spider.settings.get('USE_TASK_QUEUE', True)
+            
+            if use_queue:
+                try:
+                    import sys
+                    import pathlib
+                    # Try multiple paths - shared module is mounted at /app/apps/shared
+                    # First try the mounted path (for container)
+                    if '/app/apps' not in sys.path:
+                        sys.path.insert(0, '/app/apps')
+                    # Also try calculated project root as fallback
+                    project_root = pathlib.Path(__file__).resolve().parent.parent.parent.parent.parent
+                    if str(project_root) not in sys.path:
+                        sys.path.insert(0, str(project_root))
+                    
+                    from apps.shared.tasks.normalize_tasks import normalize_artifact
+                    
+                    # Enqueue normalization task (fire-and-forget)
+                    task = normalize_artifact.delay(str(artifact_id))
+                    logger.info(f"Enqueued normalization task for artifact {artifact_id} (task_id: {task.id})")
+                    return
+                except ImportError as e:
+                    logger.warning(f"Celery not available, falling back to HTTP: {e}")
+                except Exception as e:
+                    logger.warning(f"Failed to enqueue normalization task, falling back to HTTP: {e}")
+            
+            # Fallback to HTTP if queue not available
             import httpx
             normalize_url = spider.settings.get('NORMALIZE_SERVICE_URL')
             
@@ -353,18 +381,18 @@ class DatabaseStoragePipeline:
                 logger.warning("NORMALIZE_SERVICE_URL not configured, skipping normalization trigger")
                 return
             
-            # Make async HTTP call (fire and forget for MVP)
-            # In production, use Celery or message queue
             try:
                 # Use httpx in sync mode for Scrapy pipeline
                 # Ensure artifact_id is a string for JSON serialization
                 artifact_id_str = str(artifact_id)
                 
-                with httpx.Client(timeout=10.0) as client:
+                # Increased timeout to 60 seconds to allow normalization to complete
+                # Normalization can take time for large documents or LLM processing
+                with httpx.Client(timeout=60.0) as client:
                     response = client.post(
                         f"{normalize_url}/api/v1/documents/process",
                         json={"artifact_id": artifact_id_str},
-                        timeout=10.0
+                        timeout=60.0
                     )
                     if response.status_code == 200:
                         logger.info(f"Triggered normalization for artifact {artifact_id}")
@@ -374,7 +402,7 @@ class DatabaseStoragePipeline:
                             f"for artifact {artifact_id}: {response.text}"
                         )
             except httpx.TimeoutException:
-                logger.warning(f"Timeout triggering normalization for artifact {artifact_id}")
+                logger.warning(f"Timeout triggering normalization for artifact {artifact_id} (60s timeout exceeded)")
             except httpx.RequestError as e:
                 logger.warning(f"Failed to trigger normalization for artifact {artifact_id}: {e}")
                 
@@ -383,6 +411,46 @@ class DatabaseStoragePipeline:
         except Exception as e:
             # Don't fail the pipeline if normalization trigger fails
             logger.warning(f"Error triggering normalization for artifact {artifact_id}: {e}")
+    
+    def _trigger_normalization_after_storage(self, content_hash: str, spider):
+        """Trigger normalization service after content is stored in MinIO"""
+        try:
+            # Get artifact ID from database using content_hash
+            import sys
+            import pathlib
+            apps_dir = pathlib.Path(__file__).resolve().parent.parent.parent
+            svc_api_app_path = apps_dir / 'svc-api' / 'app'
+            if str(svc_api_app_path) not in sys.path:
+                sys.path.insert(0, str(svc_api_app_path))
+            
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import sessionmaker
+            from models.artifact import Artifact
+            
+            database_url = spider.settings.get('DATABASE_URL')
+            if not database_url:
+                logger.warning("DATABASE_URL not configured, cannot find artifact for normalization")
+                return
+            
+            engine = create_engine(database_url)
+            Session = sessionmaker(bind=engine)
+            session = Session()
+            
+            try:
+                artifact = session.query(Artifact).filter(Artifact.content_hash == content_hash).first()
+                if artifact:
+                    # Use the trigger method from DatabaseStoragePipeline
+                    # Create a temporary instance to access the method
+                    temp_pipeline = DatabaseStoragePipeline(database_url)
+                    temp_pipeline._trigger_normalization(artifact.id, spider)
+                else:
+                    logger.warning(f"Artifact not found for content_hash {content_hash[:8]}...")
+            finally:
+                session.close()
+                
+        except Exception as e:
+            # Don't fail the pipeline if normalization trigger fails
+            logger.warning(f"Error triggering normalization after storage: {e}")
     
     def _store_metadata(self, item: DocumentMetadataItem, spider):
         """Store document metadata in database."""
@@ -439,11 +507,12 @@ class ObjectStoragePipeline:
     Pipeline to store raw content in MinIO/S3 object storage.
     """
     
-    def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str):
+    def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str, database_url: str = None):
         self.endpoint = endpoint
         self.access_key = access_key
         self.secret_key = secret_key
         self.bucket = bucket
+        self.database_url = database_url
         self.s3_client = None
         self.stored_count = 0
         
@@ -453,11 +522,12 @@ class ObjectStoragePipeline:
         access_key = crawler.settings.get('MINIO_ACCESS_KEY')
         secret_key = crawler.settings.get('MINIO_SECRET_KEY')
         bucket = crawler.settings.get('MINIO_BUCKET_ARTIFACTS', 'artifacts')
+        database_url = crawler.settings.get('DATABASE_URL')
         
         if not all([endpoint, access_key, secret_key]):
             raise ValueError("MinIO configuration incomplete")
         
-        return cls(endpoint, access_key, secret_key, bucket)
+        return cls(endpoint, access_key, secret_key, bucket, database_url)
     
     def open_spider(self, spider):
         """Initialize S3/MinIO client."""
@@ -518,7 +588,11 @@ class ObjectStoragePipeline:
         try:
             self.s3_client.head_object(Bucket=self.bucket, Key=key)
             logger.debug(f"Content already stored: {content_hash}")
-            item['storage_key'] = key
+            # Note: Don't set storage_key on item - ArtifactItem doesn't support that field
+            # The key can be reconstructed from content_hash when needed
+            # Still trigger normalization even if content already exists
+            # This includes retry logic to handle transient failures
+            self._trigger_normalization_after_storage(content_hash, spider, retry_count=0, max_retries=3)
             return
         except ClientError:
             pass  # Object doesn't exist, continue with upload
@@ -551,6 +625,106 @@ class ObjectStoragePipeline:
         # Note: storage_key is not stored in item as ArtifactItem doesn't have that field
         # The key can be reconstructed from content_hash when needed
         logger.debug(f"Stored content: {content_hash} -> {key}")
+        
+        # Trigger normalization service AFTER content is stored in MinIO
+        # Get artifact ID from database using content_hash
+        # This includes retry logic to handle transient failures
+        self._trigger_normalization_after_storage(content_hash, spider, retry_count=0, max_retries=3)
+    
+    def _trigger_normalization_after_storage(self, content_hash: str, spider, retry_count: int = 0, max_retries: int = 3):
+        """
+        Trigger normalization service after content is stored in MinIO.
+        
+        Includes retry logic with exponential backoff to handle transient failures
+        like database connection issues or timing problems.
+        
+        Args:
+            content_hash: SHA-256 hash of the artifact content
+            spider: Scrapy spider instance
+            retry_count: Current retry attempt (for recursive retries)
+            max_retries: Maximum number of retry attempts
+        """
+        try:
+            # Get artifact ID from database using content_hash
+            import sys
+            import pathlib
+            import time
+            apps_dir = pathlib.Path(__file__).resolve().parent.parent.parent
+            svc_api_app_path = apps_dir / 'svc-api' / 'app'
+            if str(svc_api_app_path) not in sys.path:
+                sys.path.insert(0, str(svc_api_app_path))
+            
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import sessionmaker
+            from models.artifact import Artifact
+            
+            database_url = self.database_url or spider.settings.get('DATABASE_URL')
+            if not database_url:
+                logger.error(f"[NORMALIZATION_TRIGGER] DATABASE_URL not configured, cannot find artifact for normalization (content_hash: {content_hash[:8]}...)")
+                return
+            
+            engine = create_engine(database_url)
+            Session = sessionmaker(bind=engine)
+            session = Session()
+            
+            try:
+                # Query with a small delay to ensure database commit has completed
+                # This helps with timing issues where artifact was just created
+                if retry_count > 0:
+                    delay = min(2 ** retry_count, 10)  # Exponential backoff: 2s, 4s, 8s, max 10s
+                    logger.info(f"[NORMALIZATION_TRIGGER] Retry attempt {retry_count}/{max_retries} - waiting {delay}s before querying database")
+                    time.sleep(delay)
+                
+                artifact = session.query(Artifact).filter(Artifact.content_hash == content_hash).first()
+                if artifact:
+                    # Use the trigger method from DatabaseStoragePipeline
+                    # Create a temporary instance to access the method
+                    temp_pipeline = DatabaseStoragePipeline(database_url)
+                    temp_pipeline._trigger_normalization(artifact.id, spider)
+                    logger.info(f"[NORMALIZATION_TRIGGER] Successfully triggered normalization for artifact {artifact.id} (content_hash: {content_hash[:8]}...)")
+                else:
+                    # Artifact not found - this could be a timing issue, retry if we haven't exceeded max_retries
+                    if retry_count < max_retries:
+                        logger.warning(f"[NORMALIZATION_TRIGGER] Artifact not found for content_hash {content_hash[:8]}... (attempt {retry_count + 1}/{max_retries}) - will retry")
+                        session.close()
+                        return self._trigger_normalization_after_storage(content_hash, spider, retry_count + 1, max_retries)
+                    else:
+                        logger.error(f"[NORMALIZATION_TRIGGER] Artifact not found for content_hash {content_hash[:8]}... after {max_retries} attempts - giving up")
+            finally:
+                session.close()
+                
+        except Exception as e:
+            # Log error with full traceback for debugging
+            import traceback
+            error_traceback = traceback.format_exc()
+            
+            # Retry on certain exceptions (database connection errors, etc.)
+            retryable_exceptions = (
+                'OperationalError',
+                'InterfaceError',
+                'ConnectionError',
+                'TimeoutError',
+            )
+            
+            is_retryable = any(exc_type in str(type(e).__name__) for exc_type in retryable_exceptions)
+            
+            if is_retryable and retry_count < max_retries:
+                logger.warning(
+                    f"[NORMALIZATION_TRIGGER] Retryable error triggering normalization after storage "
+                    f"(content_hash: {content_hash[:8]}..., attempt {retry_count + 1}/{max_retries}): {e}"
+                )
+                logger.debug(f"[NORMALIZATION_TRIGGER] Traceback: {error_traceback}")
+                # Retry with exponential backoff
+                return self._trigger_normalization_after_storage(content_hash, spider, retry_count + 1, max_retries)
+            else:
+                # Non-retryable error or max retries exceeded
+                logger.error(
+                    f"[NORMALIZATION_TRIGGER] Error triggering normalization after storage "
+                    f"(content_hash: {content_hash[:8]}...): {e}"
+                )
+                logger.error(f"[NORMALIZATION_TRIGGER] Full traceback: {error_traceback}")
+                # Don't fail the pipeline if normalization trigger fails, but log as error
+                # This ensures artifacts are still stored even if normalization trigger fails
     
     def close_spider(self, spider):
         """Log storage statistics."""

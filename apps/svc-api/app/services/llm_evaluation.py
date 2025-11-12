@@ -347,42 +347,62 @@ Evaluate against the rubric categories and provide structured scores."""
             "Content-Type": "application/json"
         }
         
-        # Use function calling for structured output
-        function_schema = {
-            "name": "evaluate_document",
-            "description": "Evaluate a document and provide structured scores",
-            "parameters": {
+        # Use tools API with strict mode for structured output (enforces schema)
+        # Build explicit schema for each category to enforce scoring
+        category_properties = {}
+        for category_name in rubric.categories.keys():
+            category_properties[category_name] = {
                 "type": "object",
                 "properties": {
-                    "scores": {
-                        "type": "object",
-                        "description": "Scores for each category",
-                        "additionalProperties": {
-                            "type": "object",
-                            "properties": {
-                                "score": {"type": "number", "minimum": 0, "maximum": 5},
-                                "reasoning": {"type": "string"}
-                            },
-                            "required": ["score", "reasoning"]
-                        }
-                    },
-                    "label": {
-                        "type": "string",
-                        "enum": ["Signal", "Review", "Noise"],
-                        "description": "Overall classification"
-                    },
-                    "confidence": {
+                    "score": {
                         "type": "number",
-                        "minimum": 0.0,
-                        "maximum": 1.0,
-                        "description": "Confidence in evaluation"
+                        "minimum": 0,
+                        "maximum": 5,
+                        "description": f"Score for {category_name} (0-5)"
                     },
-                    "summary": {
+                    "reasoning": {
                         "type": "string",
-                        "description": "Brief summary of evaluation"
+                        "description": f"2-3 sentence justification for {category_name} score"
                     }
                 },
-                "required": ["scores", "label", "confidence", "summary"]  # scores is REQUIRED
+                "required": ["score", "reasoning"],
+                "additionalProperties": False
+            }
+        
+        tool_schema = {
+            "type": "function",
+            "function": {
+                "name": "evaluate_document",
+                "description": "Evaluate a document and provide structured scores for ALL categories",
+                "strict": True,  # Enforce strict schema compliance
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "scores": {
+                            "type": "object",
+                            "properties": category_properties,
+                            "required": list(rubric.categories.keys()),  # All categories required
+                            "additionalProperties": False
+                        },
+                        "label": {
+                            "type": "string",
+                            "enum": ["Signal", "Review", "Noise"],
+                            "description": "Overall classification"
+                        },
+                        "confidence": {
+                            "type": "number",
+                            "minimum": 0.0,
+                            "maximum": 1.0,
+                            "description": "Confidence in evaluation"
+                        },
+                        "summary": {
+                            "type": "string",
+                            "description": "Brief summary of evaluation"
+                        }
+                    },
+                    "required": ["scores", "label", "confidence", "summary"],
+                    "additionalProperties": False
+                }
             }
         }
         
@@ -392,8 +412,8 @@ Evaluate against the rubric categories and provide structured scores."""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            "functions": [function_schema],
-            "function_call": {"name": "evaluate_document"},
+            "tools": [tool_schema],
+            "tool_choice": {"type": "function", "function": {"name": "evaluate_document"}},
             "temperature": float(provider.temperature) if provider.temperature else 0.2
         }
         
@@ -406,49 +426,51 @@ Evaluate against the rubric categories and provide structured scores."""
             logger.info(f"[LLM DEBUG] OpenAI response received")
             logger.info(f"[LLM DEBUG] Model: {result.get('model', 'unknown')}")
             
-            # Extract function call arguments
+            # Extract tool call arguments (tools API) or function call (legacy)
             message = result["choices"][0]["message"]
             logger.info(f"[LLM DEBUG] Message keys: {list(message.keys())}")
             
-            if "function_call" in message:
+            # Try tools API format first (new)
+            if "tool_calls" in message and message["tool_calls"]:
+                tool_call = message["tool_calls"][0]
+                function_args = json.loads(tool_call["function"]["arguments"])
+                logger.info(f"[LLM DEBUG] Tool called: {tool_call['function'].get('name')}")
+                logger.info(f"[LLM DEBUG] Arguments (first 500 chars): {tool_call['function'].get('arguments', '')[:500]}")
+            # Fall back to legacy function_call format
+            elif "function_call" in message:
                 function_call = message["function_call"]
+                function_args = json.loads(message["function_call"]["arguments"])
                 logger.info(f"[LLM DEBUG] Function called: {function_call.get('name')}")
                 logger.info(f"[LLM DEBUG] Arguments (first 500 chars): {function_call.get('arguments', '')[:500]}")
-                
-                function_args = json.loads(message["function_call"]["arguments"])
-                scores = function_args.get("scores", {})
-                
-                logger.info(f"[LLM DEBUG] Parsed scores keys: {list(scores.keys()) if scores else 'EMPTY'}")
-                logger.info(f"[LLM DEBUG] Label: {function_args.get('label')}, Confidence: {function_args.get('confidence')}")
-                
-                # If scores is empty (GPT-4 sometimes ignores requirement for Noise), generate default zeros
-                if not scores:
-                    logger.warning("[LLM] Scores missing from response, generating default zeros for all categories")
-                    # Get rubric categories and generate 0 scores
-                    scores = {cat: {"score": 0, "reasoning": "No detailed scoring provided by LLM for low-quality content"} 
-                             for cat in rubric.categories.keys()}
-                
-                return {
-                    "scores": scores,
-                    "label": function_args.get("label", "Review"),
-                    "confidence": function_args.get("confidence", 0.5),
-                    "summary": function_args.get("summary", ""),
-                    "model_id": result.get("model", model)
-                }
             else:
-                # Fallback: try to parse JSON from content
+                # No structured output, try to parse content
                 content = message.get("content", "")
+                logger.warning(f"[LLM] No tool/function call in response, attempting to parse content")
                 try:
-                    parsed = json.loads(content)
-                    return {
-                        "scores": parsed.get("scores", {}),
-                        "label": parsed.get("label", "Review"),
-                        "confidence": parsed.get("confidence", 0.5),
-                        "summary": parsed.get("summary", ""),
-                        "model_id": result.get("model", model)
-                    }
+                    function_args = json.loads(content)
                 except json.JSONDecodeError:
-                    raise RuntimeError(f"Could not parse LLM response as JSON: {content[:200]}")
+                    raise RuntimeError(f"Could not parse LLM response: {content[:200]}")
+            
+            scores = function_args.get("scores", {})
+            
+            logger.info(f"[LLM DEBUG] Parsed scores keys: {list(scores.keys()) if scores else 'EMPTY'}")
+            logger.info(f"[LLM DEBUG] Label: {function_args.get('label')}, Confidence: {function_args.get('confidence')}")
+            
+            # If scores is empty with strict mode, this is an error
+            if not scores:
+                logger.error("[LLM] Scores missing from response despite strict mode!")
+                logger.error(f"[LLM] Full arguments: {json.dumps(function_args, indent=2)}")
+                # Generate default zeros as fallback
+                scores = {cat: {"score": 0, "reasoning": "No detailed scoring provided by LLM for low-quality content"} 
+                         for cat in rubric.categories.keys()}
+            
+            return {
+                "scores": scores,
+                "label": function_args.get("label", "Review"),
+                "confidence": function_args.get("confidence", 0.5),
+                "summary": function_args.get("summary", ""),
+                "model_id": result.get("model", model)
+            }
     
     async def _evaluate_anthropic(
         self,

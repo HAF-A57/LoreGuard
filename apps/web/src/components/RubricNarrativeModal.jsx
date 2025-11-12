@@ -4,6 +4,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog.jsx'
@@ -137,8 +138,8 @@ Clarification Prompt: ${rubric.prompts?.clarification || 'Not specified'}`
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[2400px] max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-[2400px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
           <DialogTitle className="flex items-center space-x-2">
             <FileText className="h-5 w-5" />
             <span>LLM Prompt Narrative</span>
@@ -148,7 +149,7 @@ Clarification Prompt: ${rubric.prompts?.clarification || 'Not specified'}`
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-200px)] pr-4">
+        <ScrollArea className="flex-1 min-h-0 px-6">
           {loading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -279,6 +280,9 @@ Clarification Prompt: ${rubric.prompts?.clarification || 'Not specified'}`
             </div>
           )}
         </ScrollArea>
+        <DialogFooter className="px-6 pb-6 pt-4 flex-shrink-0 border-t">
+          <Button onClick={() => onOpenChange(false)}>Close</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

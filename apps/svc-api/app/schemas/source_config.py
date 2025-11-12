@@ -149,7 +149,18 @@ class ExtractionConfig(BaseModel):
     """Content extraction configuration"""
     content_selectors: Dict[str, str] = Field(default_factory=dict, description="CSS/XPath selectors for content")
     extract_images: bool = Field(default=False, description="Download and process images")
-    extract_pdfs: bool = Field(default=True, description="Download and process PDFs")
+    extract_pdfs: bool = Field(default=True, description="Download and process PDF documents found during crawling")
+    extract_documents: bool = Field(default=True, description="Download and process document files (PDF, DOCX, DOC, PPTX, XLSX, etc.)")
+    allowed_document_types: List[str] = Field(
+        default_factory=lambda: ['pdf', 'docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'],
+        description="List of document types to extract (extensions without dot, e.g., 'pdf', 'docx')"
+    )
+    max_document_size_mb: int = Field(
+        default=50,
+        ge=1,
+        le=500,
+        description="Maximum document file size in MB (documents larger than this will be skipped)"
+    )
     extract_metadata: bool = Field(default=True, description="Extract document metadata")
     min_content_length: int = Field(default=100, ge=0, description="Minimum content length (characters)")
 

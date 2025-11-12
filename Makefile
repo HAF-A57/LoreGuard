@@ -1,7 +1,7 @@
 # LoreGuard Makefile
 # Container and service management
 
-.PHONY: help detect-ip check-env up down restart logs logs-follow clean clean-force quick-start quick-start-infra health-check init-db reset-db reset-db-force stop-services rebuild-services start-api start-normalize start-assistant start-web test format lint
+.PHONY: help detect-ip check-env up down restart logs logs-follow clean clean-force quick-start quick-start-infra health-check init-db reset-db reset-db-force stop-services rebuild-services start-api start-normalize start-assistant start-web start-workers stop-workers restart-workers test format lint
 
 # Default target
 help:
@@ -33,6 +33,11 @@ help:
 	@echo "  make start-assistant - Start AI assistant service (development, foreground)"
 	@echo "  make start-web      - Start frontend (development, foreground)"
 	@echo "  make stop-services  - Stop all background application services"
+	@echo ""
+	@echo "Celery Workers:"
+	@echo "  make start-workers   - Start Celery workers (normalize + evaluate queues)"
+	@echo "  make stop-workers    - Stop Celery workers"
+	@echo "  make restart-workers - Restart Celery workers"
 	@echo ""
 	@echo "Development:"
 	@echo "  make test           - Run tests"
@@ -103,6 +108,10 @@ quick-start: quick-start-infra
 	@docker compose -f docker-compose.dev.yml build loreguard-api loreguard-normalize loreguard-assistant loreguard-ingestion
 	@docker compose -f docker-compose.dev.yml up -d loreguard-api loreguard-normalize loreguard-assistant loreguard-ingestion
 	@echo ""
+	@echo "🚀 Starting Celery workers..."
+	@sleep 5
+	@make start-workers
+	@echo ""
 	@echo "🚀 Starting frontend (local, for hot reload)..."
 	@bash scripts/dev/start-services.sh web-only
 	@echo ""
@@ -126,10 +135,12 @@ quick-start: quick-start-infra
 		echo "   - Normalize Service: Running (containerized)"; \
 		echo "   - AI Assistant Service: Running (containerized)"; \
 		echo "   - Ingestion Service: Running (containerized)"; \
+		echo "   - Celery Workers: Running (normalize + evaluate queues)"; \
 		echo "   - Frontend: Running (local, hot reload)"; \
 		echo ""; \
 		echo "💡 Useful commands:"; \
 		echo "   make stop-services     - Stop all application services"; \
+		echo "   make stop-workers      - Stop Celery workers"; \
 		echo "   make logs              - View container logs"; \
 		echo "   make health-check      - Check service health"; \
 		echo "   make rebuild-services  - Rebuild backend containers"; \
@@ -153,14 +164,25 @@ up: detect-ip
 		set -a && . $(CURDIR)/.env && set +a; \
 	fi
 	@docker compose -f docker-compose.dev.yml up -d
+	@echo ""
+	@echo "Waiting for services to be ready..."
+	@sleep 5
+	@echo "Starting Celery workers..."
+	@make start-workers
 
 down:
 	@echo "Stopping LoreGuard containers..."
+	@echo "Stopping Celery workers..."
+	@make stop-workers 2>/dev/null || true
 	@docker compose -f docker-compose.dev.yml down
 
 restart:
 	@echo "Restarting LoreGuard containers..."
 	@docker compose -f docker-compose.dev.yml restart
+	@echo ""
+	@echo "Restarting Celery workers..."
+	@sleep 5
+	@make restart-workers
 
 logs:
 	@docker compose -f docker-compose.dev.yml logs --tail=100
@@ -225,6 +247,8 @@ stop-services:
 		set -a && . $(CURDIR)/.env && set +a; \
 	fi
 	@docker compose -f docker-compose.dev.yml stop loreguard-api loreguard-normalize loreguard-assistant loreguard-ingestion 2>/dev/null || true
+	@echo "Stopping Celery workers..."
+	@make stop-workers 2>/dev/null || true
 	@echo "Stopping local frontend service..."
 	@if [ -f logs/web.pid ]; then \
 		PID=$$(cat logs/web.pid); \
@@ -345,6 +369,91 @@ start-web:
 		fi && \
 		if [ -f $(CURDIR)/.env ]; then set -a && . $(CURDIR)/.env && set +a; fi && \
 		npm run dev
+
+# Celery Workers Management
+start-workers:
+	@echo "Starting Celery workers..."
+	@# Load environment variables if available
+	@if [ -f .env ]; then \
+		set -a && . $(CURDIR)/.env && set +a; \
+	fi
+	@# Check if containers are running
+	@if ! docker ps | grep -q loreguard-api; then \
+		echo "❌ API container is not running. Start services first with 'make up' or 'make quick-start'"; \
+		exit 1; \
+	fi
+	@if ! docker ps | grep -q loreguard-normalize; then \
+		echo "❌ Normalize container is not running. Start services first with 'make up' or 'make quick-start'"; \
+		exit 1; \
+	fi
+	@# Check if workers are already running
+	@WORKERS_RUNNING=0; \
+	if docker exec -e PYTHONPATH=/app/apps:/app loreguard-normalize celery -A apps.shared.tasks.celery_app inspect ping 2>/dev/null | grep -q "pong"; then \
+		WORKERS_RUNNING=$$((WORKERS_RUNNING + 1)); \
+	fi; \
+	if docker exec -e PYTHONPATH=/app/apps:/app loreguard-api celery -A apps.shared.tasks.celery_app inspect ping 2>/dev/null | grep -q "pong"; then \
+		WORKERS_RUNNING=$$((WORKERS_RUNNING + 1)); \
+	fi; \
+	if [ $$WORKERS_RUNNING -ge 2 ]; then \
+		echo "⚠️  Celery workers are already running"; \
+		docker exec -e PYTHONPATH=/app/apps:/app loreguard-normalize celery -A apps.shared.tasks.celery_app inspect active_queues 2>/dev/null || true; \
+		docker exec -e PYTHONPATH=/app/apps:/app loreguard-api celery -A apps.shared.tasks.celery_app inspect active_queues 2>/dev/null || true; \
+	else \
+		echo "Starting normalization worker in normalize container..." ; \
+		docker exec -e PYTHONPATH=/app/apps:/app -d loreguard-normalize celery -A apps.shared.tasks.celery_app worker --queues=normalize_queue --concurrency=4 --loglevel=info --hostname=normalize-worker@%h 2>/dev/null && \
+		echo "✓ Normalization worker started" || echo "⚠️  Failed to start normalization worker"; \
+		sleep 2; \
+		echo "Starting evaluation worker in API container..." ; \
+		docker exec -e PYTHONPATH=/app/apps:/app -d loreguard-api celery -A apps.shared.tasks.celery_app worker --queues=evaluate_queue --concurrency=4 --loglevel=info --hostname=evaluate-worker@%h 2>/dev/null && \
+		echo "✓ Evaluation worker started" || echo "⚠️  Failed to start evaluation worker"; \
+		sleep 2; \
+		echo ""; \
+		echo "Verifying workers..." ; \
+		NORMALIZE_WORKER=$$(docker exec -e PYTHONPATH=/app/apps:/app loreguard-normalize celery -A apps.shared.tasks.celery_app inspect ping 2>/dev/null | grep -q "pong" && echo "OK" || echo "FAIL"); \
+		EVALUATE_WORKER=$$(docker exec -e PYTHONPATH=/app/apps:/app loreguard-api celery -A apps.shared.tasks.celery_app inspect ping 2>/dev/null | grep -q "pong" && echo "OK" || echo "FAIL"); \
+		if [ "$$NORMALIZE_WORKER" = "OK" ] && [ "$$EVALUATE_WORKER" = "OK" ]; then \
+			echo "✅ Celery workers are running!"; \
+		else \
+			echo "⚠️  Some workers may still be starting up (Normalize: $$NORMALIZE_WORKER, Evaluate: $$EVALUATE_WORKER)"; \
+		fi; \
+	fi
+
+stop-workers:
+	@echo "Stopping Celery workers..."
+	@# Load environment variables if available
+	@if [ -f .env ]; then \
+		set -a && . $(CURDIR)/.env && set +a; \
+	fi
+	@# Stop normalization worker in normalize container using Celery control
+	@if docker ps | grep -q loreguard-normalize; then \
+		if docker exec -e PYTHONPATH=/app/apps:/app loreguard-normalize celery -A apps.shared.tasks.celery_app inspect ping 2>/dev/null | grep -q "pong"; then \
+			docker exec -e PYTHONPATH=/app/apps:/app loreguard-normalize celery -A apps.shared.tasks.celery_app control shutdown 2>/dev/null && \
+			echo "✓ Normalization worker stopped" || echo "⚠️  Failed to stop normalization worker gracefully"; \
+			sleep 2; \
+		else \
+			echo "ℹ️  Normalization worker not running (container may be stopping)"; \
+		fi; \
+	else \
+		echo "ℹ️  Normalize container not running - workers already stopped"; \
+	fi
+	@# Stop evaluation worker in API container using Celery control
+	@if docker ps | grep -q loreguard-api; then \
+		if docker exec -e PYTHONPATH=/app/apps:/app loreguard-api celery -A apps.shared.tasks.celery_app inspect ping 2>/dev/null | grep -q "pong"; then \
+			docker exec -e PYTHONPATH=/app/apps:/app loreguard-api celery -A apps.shared.tasks.celery_app control shutdown 2>/dev/null && \
+			echo "✓ Evaluation worker stopped" || echo "⚠️  Failed to stop evaluation worker gracefully"; \
+			sleep 2; \
+		else \
+			echo "ℹ️  Evaluation worker not running (container may be stopping)"; \
+		fi; \
+	else \
+		echo "ℹ️  API container not running - workers already stopped"; \
+	fi
+	@echo "✓ Worker stop complete"
+
+restart-workers: stop-workers
+	@echo ""
+	@sleep 2
+	@make start-workers
 
 # Development tasks
 test:

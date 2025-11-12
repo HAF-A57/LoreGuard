@@ -237,8 +237,14 @@ services:
       - ./apps/svc-api/app:/app/app:ro
       # Mount ingestion service for scrapy invocation (API service spawns scrapy processes)
       - ./apps/svc-ingestion:/app/svc-ingestion:ro
+      # Mount shared tasks module for Celery workers
+      - ./apps/shared:/app/apps/shared:ro
+      # Mount normalize service for Celery workers (normalization tasks need normalize service code)
+      - ./apps/svc-normalize/app:/app/apps/svc-normalize/app:ro
       # Mount logs directory
       - ./logs:/app/logs
+      # Mount Docker socket for executing scrapy in ingestion container
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     networks:
       - loreguard-network
@@ -273,9 +279,13 @@ services:
       PORT: 8001
       ENVIRONMENT: development
       LOG_LEVEL: INFO
+      # External service URLs
+      API_SERVICE_URL: http://loreguard-api:8000
       # CORS
       BACKEND_CORS_ORIGINS: http://${LOREGUARD_HOST_IP:-localhost}:6060,http://${LOREGUARD_HOST_IP:-localhost}:5173,http://localhost:6060,http://localhost:5173
       ALLOWED_HOSTS: "*"
+      # Python path to include API service for database models
+      PYTHONPATH: /app/apps:/app/svc-api-app:/app
     ports:
       - "0.0.0.0:8001:8001"
     depends_on:
@@ -286,8 +296,12 @@ services:
       minio:
         condition: service_healthy
     volumes:
-      # Mount code for development (optional - comment out for production)
+      # Mount code for development
       - ./apps/svc-normalize/app:/app/app:ro
+      # Mount shared tasks module for Celery workers
+      - ./apps/shared:/app/apps/shared:ro
+      # Mount API service for database models
+      - ./apps/svc-api/app:/app/svc-api-app:ro
       # Mount logs directory
       - ./logs:/app/logs
     restart: unless-stopped
@@ -314,7 +328,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password_here}@redis:6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password_here}
       # MinIO
-      MINIO_ENDPOINT: minio:9000
+      MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-loreguard}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio_password_here}
       # Service Configuration
@@ -326,7 +340,7 @@ services:
       # Playwright configuration
       PLAYWRIGHT_BROWSERS_PATH: /home/loreguard/.cache/ms-playwright
       # Python path to include API service for database models
-      PYTHONPATH: /app/svc-api-app:/app
+      PYTHONPATH: /app/apps:/app/svc-api-app:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -341,6 +355,8 @@ services:
     volumes:
       # Mount code for development (optional - comment out for production)
       - ./apps/svc-ingestion/app:/app/app:ro
+      # Mount shared tasks module for Celery workers
+      - ./apps/shared:/app/apps/shared:ro
       # Mount API service code for database model access
       - ./apps/svc-api/app:/app/svc-api-app:ro
       # Mount logs directory
@@ -380,7 +396,8 @@ services:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-gpt-4}
       # API URL for tool calling (points to API service)
-      API_URL: http://loreguard-api:8000
+      API_SERVICE_URL: http://loreguard-api:8000
+      NORMALIZE_SERVICE_URL: http://loreguard-normalize:8001
       # Python path to include API service for database models
       PYTHONPATH: /app/svc-api-app:/app
     ports:

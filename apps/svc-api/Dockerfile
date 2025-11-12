@@ -27,10 +27,11 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install runtime dependencies
+# Install runtime dependencies including Docker CLI
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     curl \
+    docker.io \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy virtual environment from builder
@@ -40,8 +41,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy application code
 COPY . .
 
-# Create non-root user for security
-RUN useradd -m -u 1000 loreguard && \
+# Create non-root user for security and add to docker group with host's GID
+RUN groupadd -g 988 dockerhost && \
+    useradd -m -u 1000 -G 988 loreguard && \
     chown -R loreguard:loreguard /app
 
 # Switch to non-root user

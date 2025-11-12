@@ -61,7 +61,7 @@ const Login = ({ onLogin }) => {
         {/* Login Card */}
         <Card className="aulendur-gradient-card shadow-2xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome Back<span className="placeholder-indicator">⭐</span></CardTitle>
+            <CardTitle className="text-2xl">Welcome Back</CardTitle>
             <CardDescription>Sign in to access your LoreGuard dashboard</CardDescription>
           </CardHeader>
           <CardContent>
@@ -136,7 +136,7 @@ const Login = ({ onLogin }) => {
                   </div>
                 ) : (
                   <>
-                    Sign In<span className="placeholder-indicator">⭐</span>
+                    Sign In
                   </>
                 )}
               </Button>

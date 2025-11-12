@@ -689,8 +689,8 @@ const Settings = () => {
 
           {/* Add/Edit Provider Dialog */}
           <Dialog open={showProviderDialog} onOpenChange={setShowProviderDialog}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
+            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                 <DialogTitle>
                   {editingProvider ? 'Edit LLM Provider' : 'Add LLM Provider'}
                 </DialogTitle>
@@ -698,7 +698,8 @@ const Settings = () => {
                   Configure an LLM provider for artifact evaluation
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <ScrollArea className="flex-1 min-h-0 px-6">
+                <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
@@ -848,8 +849,9 @@ const Settings = () => {
                     <Label>Set as default provider</Label>
                   </div>
                 </div>
-              </div>
-              <DialogFooter>
+                </div>
+              </ScrollArea>
+              <DialogFooter className="px-6 pb-6 pt-4 flex-shrink-0 border-t">
                 <Button variant="outline" onClick={() => setShowProviderDialog(false)}>
                   Cancel
                 </Button>

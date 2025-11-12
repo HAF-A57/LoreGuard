@@ -326,8 +326,8 @@ const RubricFormModal = ({ rubricId, open, onOpenChange, onSuccess }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[2400px] max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-[2400px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
           <DialogTitle className="flex items-center space-x-2">
             <Target className="h-5 w-5" />
             <span>{isEditMode ? 'Edit Rubric' : 'Create New Rubric'}</span>
@@ -337,7 +337,7 @@ const RubricFormModal = ({ rubricId, open, onOpenChange, onSuccess }) => {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-200px)] pr-4">
+        <ScrollArea className="flex-1 min-h-0 px-6">
           {loading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -774,7 +774,7 @@ const RubricFormModal = ({ rubricId, open, onOpenChange, onSuccess }) => {
           )}
         </ScrollArea>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 pb-6 pt-4 flex-shrink-0 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>

@@ -60,7 +60,8 @@ class JobMonitoringService:
             Dictionary with comprehensive job status
         """
         status_info = {
-            "job_id": job.id,
+            "id": job.id,  # Use 'id' for consistency with API responses
+            "job_id": job.id,  # Keep 'job_id' for backward compatibility
             "type": job.type,
             "status": job.status,
             "created_at": job.created_at.isoformat() if job.created_at else None,

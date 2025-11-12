@@ -1,41 +1,89 @@
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.jsx'
-import { Input } from '@/components/ui/input.jsx'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
+import { Textarea } from '@/components/ui/textarea.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { ScrollArea } from '@/components/ui/scroll-area.jsx'
 import { Separator } from '@/components/ui/separator.jsx'
+import { ChatMessage } from '@/components/chat-message.jsx'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible.jsx'
 import { 
   Send, 
   Bot, 
-  User, 
-  Sparkles, 
-  FileText, 
-  Search,
-  Brain,
-  Lightbulb,
   MessageSquare,
   Minimize2,
-  Maximize2,
   X,
-  Copy,
-  ThumbsUp,
-  ThumbsDown,
   Loader2,
   History,
   Plus,
   MoreVertical,
   Trash2,
-  Archive
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronDown,
+  ChevronUp,
+  Sparkles
 } from 'lucide-react'
 import { ASSISTANT_API_URL } from '@/config.js'
 import { toast } from 'sonner'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu.jsx'
+
+// Assistant tools data
+const ASSISTANT_TOOLS = [
+  {
+    name: "get_rubric_details",
+    title: "Get Rubric Details",
+    description: "Get detailed information about a specific rubric version or the active rubric",
+    example: "What rubrics do I have configured? Show me the active rubric details."
+  },
+  {
+    name: "search_artifacts",
+    title: "Search Artifacts",
+    description: "Search for artifacts by title, organization, or topic",
+    example: "Show me my recent Signal artifacts about China"
+  },
+  {
+    name: "get_artifact_details",
+    title: "Get Artifact Details",
+    description: "Get detailed information about a specific artifact including metadata and evaluation",
+    example: "Tell me more about artifact [artifact-id]"
+  },
+  {
+    name: "list_sources",
+    title: "List Sources",
+    description: "List all configured data sources with their status",
+    example: "What sources am I monitoring? Show me all active sources."
+  },
+  {
+    name: "trigger_source_crawl",
+    title: "Trigger Source Crawl",
+    description: "Trigger a manual crawl for a specific source",
+    example: "Start a crawl for the Brookings Institution source"
+  },
+  {
+    name: "get_job_status",
+    title: "Get Job Status",
+    description: "Get status and details of a specific job",
+    example: "What's the status of job [job-id]?"
+  },
+  {
+    name: "list_active_jobs",
+    title: "List Active Jobs",
+    description: "List all currently active (running or pending) jobs",
+    example: "Show me all currently running jobs"
+  },
+  {
+    name: "evaluate_artifact",
+    title: "Evaluate Artifact",
+    description: "Trigger evaluation for a specific artifact using the active rubric",
+    example: "Evaluate artifact [artifact-id] using the active rubric"
+  },
+  {
+    name: "get_system_health",
+    title: "Get System Health",
+    description: "Get overall system health status including all services",
+    example: "What's the system health status? Are all services running?"
+  }
+]
 
 const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
   const [sessions, setSessions] = useState([])
@@ -45,6 +93,8 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
   const [isTyping, setIsTyping] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [showSessionList, setShowSessionList] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [showToolsExplorer, setShowToolsExplorer] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -234,11 +284,28 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
       e.preventDefault()
       handleSendMessage()
     }
+    // Shift+Enter allows new line, handled by textarea default behavior
   }
 
-  if (isCollapsed) {
-    return (
-      <div className="w-12 bg-sidebar border-l border-sidebar-border flex flex-col items-center py-4 flex-shrink-0 h-full">
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto'
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 200)}px`
+    }
+  }, [inputValue])
+
+  // Get current session info
+  const currentSession = sessions.find(s => s.id === currentSessionId)
+
+  return (
+    <div className={`bg-sidebar border-l border-sidebar-border flex flex-col flex-shrink-0 h-full max-h-full overflow-hidden transition-all duration-300 ease-in-out relative ai-assistant-container ${
+      isCollapsed ? 'w-12' : isExpanded ? 'w-[640px]' : 'w-80'
+    }`}>
+      {/* Collapsed state - icon button */}
+      <div className={`flex flex-col items-center py-4 h-full transition-opacity duration-300 ease-in-out ${
+        isCollapsed ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none absolute inset-0'
+      }`}>
         <Button
           variant="ghost"
           size="sm"
@@ -248,16 +315,29 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
           <MessageSquare className="h-4 w-4" />
         </Button>
       </div>
-    )
-  }
 
-  // Get current session info
-  const currentSession = sessions.find(s => s.id === currentSessionId)
+      {/* Expand/Collapse Width Button */}
+      {!isCollapsed && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 h-8 w-8 p-0 bg-sidebar border border-sidebar-border rounded-full shadow-lg hover:bg-sidebar-accent transition-all duration-300 ease-in-out"
+          title={isExpanded ? "Collapse width" : "Expand width"}
+        >
+          {isExpanded ? (
+            <ChevronsRight className="h-4 w-4 text-sidebar-foreground" />
+          ) : (
+            <ChevronsLeft className="h-4 w-4 text-sidebar-foreground" />
+          )}
+        </Button>
+      )}
 
-  return (
-    <div className="w-80 bg-sidebar border-l border-sidebar-border flex flex-col flex-shrink-0 h-full overflow-hidden">
+      {/* Expanded state - full assistant */}
+      {!isCollapsed && (
+      <div className="flex flex-col h-full max-h-full w-full transition-opacity duration-300 ease-in-out overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-sidebar-border ai-assistant-header">
+      <div className="p-4 border-b border-sidebar-border ai-assistant-header flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -300,16 +380,76 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
 
         {/* Current Session Info */}
         {currentSession && (
-          <div className="text-xs text-sidebar-foreground/70">
+          <div className="text-xs text-sidebar-foreground/70 mb-2">
             {currentSession.title}
           </div>
         )}
+
+        {/* Explore Assistant Tools - Always visible in header */}
+        <Collapsible open={showToolsExplorer} onOpenChange={setShowToolsExplorer} className="w-full">
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full text-xs h-7 bg-sidebar-accent/20 border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent/30 hover:text-sidebar-foreground"
+            >
+              <Sparkles className="h-3 w-3 mr-1.5" />
+              Explore Assistant Tools
+              {showToolsExplorer ? (
+                <ChevronUp className="h-3 w-3 ml-auto" />
+              ) : (
+                <ChevronDown className="h-3 w-3 ml-auto" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="w-full mt-2">
+            <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
+              {ASSISTANT_TOOLS.map((tool) => (
+                <Card key={tool.name} className="bg-sidebar-accent/20 border-sidebar-border py-1.5">
+                  <CardHeader className="pb-1 px-3 pt-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <CardTitle className="text-xs font-semibold text-sidebar-foreground leading-tight">
+                            {tool.title}
+                          </CardTitle>
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 shrink-0 bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground">
+                            <Sparkles className="h-2 w-2 mr-0.5" />
+                            Tool
+                          </Badge>
+                        </div>
+                        <CardDescription className="text-[10px] text-sidebar-foreground/70 leading-tight line-clamp-1">
+                          {tool.description}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0 px-3 pb-1.5">
+                    <div className="text-[10px]">
+                      <span className="text-sidebar-foreground/60 font-medium">Example: </span>
+                      <button
+                        onClick={() => {
+                          setInputValue(tool.example)
+                          setShowToolsExplorer(false)
+                          inputRef.current?.focus()
+                        }}
+                        className="text-sidebar-foreground hover:text-sidebar-accent-foreground underline text-left break-words"
+                      >
+                        {tool.example}
+                      </button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       {/* Session List Overlay */}
       {showSessionList && (
-        <div className="absolute top-16 left-0 right-0 bottom-0 bg-sidebar z-10 flex flex-col">
-          <div className="p-4 border-b border-sidebar-border">
+        <div className="absolute inset-0 bg-sidebar z-10 flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-sidebar-border flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold text-sidebar-foreground">Chat History</h3>
               <Button 
@@ -322,7 +462,7 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
               </Button>
             </div>
           </div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0 overflow-hidden">
             <div className="p-4 space-y-2">
               {sessions.length === 0 ? (
                 <div className="text-center py-8 text-sidebar-foreground/70">
@@ -348,19 +488,15 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
                             {session.message_count} messages
                           </div>
                         </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                              <MoreVertical className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem onClick={(e) => handleDeleteSession(session.id, e)}>
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:text-destructive"
+                          onClick={(e) => handleDeleteSession(session.id, e)}
+                          title="Delete conversation"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                       {session.last_message_preview && (
                         <p className="text-xs text-muted-foreground line-clamp-2">
@@ -380,7 +516,8 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
       )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4 min-h-0">
+      <ScrollArea className="flex-1 min-h-0 overflow-hidden w-full">
+        <div className="p-4 w-full max-w-full overflow-x-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -394,6 +531,7 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
             <p className="text-sm text-sidebar-foreground/70 mb-4">
               I can help you analyze artifacts, manage rubrics, trigger crawls, and navigate your LoreGuard environment.
             </p>
+
             <div className="space-y-2 w-full">
               <p className="text-xs text-sidebar-foreground/70">Try asking:</p>
               <Button 
@@ -425,56 +563,7 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
         ) : (
           <div className="space-y-4">
             {messages.map((message) => (
-              <div key={message.id} className="space-y-2">
-                <div className={`flex items-start space-x-3 ${
-                  message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                }`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    message.type === 'user' 
-                      ? 'bg-primary' 
-                      : 'bg-muted'
-                  }`}>
-                    {message.type === 'user' ? (
-                      <User className="h-4 w-4 text-white" />
-                    ) : (
-                      <Bot className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className={`flex-1 min-w-0 ${
-                    message.type === 'user' ? 'text-right' : ''
-                  }`}>
-                    <div className={`inline-block p-3 rounded-lg max-w-full break-words ${
-                      message.type === 'user'
-                        ? 'bg-primary text-white'
-                        : 'bg-muted'
-                    }`}>
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                      
-                      {/* Show tool usage badge */}
-                      {message.tool_calls && message.tool_calls.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {message.tool_calls.map((tc, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              <Sparkles className="h-3 w-3 mr-1" />
-                              {tc.function.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(message.timestamp).toLocaleTimeString()}
-                      </p>
-                      {message.model_used && message.type === 'assistant' && (
-                        <Badge variant="outline" className="text-xs">
-                          {message.model_used}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <ChatMessage key={message.id} message={message} />
             ))}
 
             {/* Typing Indicator */}
@@ -496,24 +585,32 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
             <div ref={messagesEndRef} />
           </div>
         )}
+        </div>
       </ScrollArea>
 
       {/* Input */}
       <div className="p-4 border-t border-sidebar-border flex-shrink-0">
-        <div className="flex space-x-2">
-          <Input
-            ref={inputRef}
-            placeholder="Ask me anything about LoreGuard..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="flex-1 bg-sidebar-accent/20 text-sidebar-foreground placeholder:text-sidebar-foreground/60 border-sidebar-border focus-visible:ring-sidebar-ring"
-            disabled={isTyping}
-          />
+        <div className="flex space-x-2 items-end">
+          <div className="flex-1 relative">
+            <Textarea
+              ref={inputRef}
+              placeholder="Ask me anything about LoreGuard... (Shift+Enter for new line)"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyPress}
+              className="min-h-[44px] max-h-[200px] resize-none bg-sidebar-accent/20 text-sidebar-foreground placeholder:text-sidebar-foreground/60 border-sidebar-border focus-visible:ring-sidebar-ring pr-12"
+              disabled={isTyping}
+              rows={1}
+            />
+            <div className="absolute bottom-2 right-2 text-xs text-sidebar-foreground/60 pointer-events-none">
+              {inputValue.length > 0 && `${inputValue.length} chars`}
+            </div>
+          </div>
           <Button 
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || isTyping}
-            className="aulendur-hover-transform"
+            className="aulendur-hover-transform h-[44px] flex-shrink-0"
+            size="default"
           >
             {isTyping ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -534,6 +631,8 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
           )}
         </div>
       </div>
+      </div>
+      )}
     </div>
   )
 }

@@ -73,6 +73,7 @@ class ArtifactListItem(BaseModel):
     id: uuid.UUID
     source_id: uuid.UUID
     uri: str
+    mime_type: Optional[str] = None
     created_at: datetime
     
     # Metadata summary

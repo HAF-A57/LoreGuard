@@ -76,8 +76,8 @@ const RubricDetailModal = ({ rubricId, open, onOpenChange, onViewNarrative }) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[2400px] max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-[2400px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <DialogTitle className="flex items-center space-x-2">
@@ -108,24 +108,25 @@ const RubricDetailModal = ({ rubricId, open, onOpenChange, onViewNarrative }) =>
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-200px)] pr-4">
-          {loading && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          )}
-
-          {error && (
-            <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-              <div className="flex items-center space-x-2 text-destructive">
-                <AlertCircle className="h-5 w-5" />
-                <span>Error loading rubric: {error}</span>
+        <ScrollArea className="flex-1 min-h-0 px-6">
+          <div className="py-4">
+            {loading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-            </div>
-          )}
+            )}
 
-          {rubric && !loading && (
-            <div className="space-y-6">
+            {error && (
+              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                <div className="flex items-center space-x-2 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  <span>Error loading rubric: {error}</span>
+                </div>
+              </div>
+            )}
+
+            {rubric && !loading && (
+              <div className="space-y-6">
               {/* Rubric Overview */}
               <Card>
                 <CardHeader>
@@ -290,17 +291,13 @@ const RubricDetailModal = ({ rubricId, open, onOpenChange, onViewNarrative }) =>
                   </CardContent>
                 </Card>
               )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </ScrollArea>
 
-        <DialogFooter>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent"
-          >
-            Close
-          </button>
+        <DialogFooter className="px-6 pb-6 pt-4 flex-shrink-0 border-t">
+          <Button onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

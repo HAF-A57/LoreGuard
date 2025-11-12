@@ -479,8 +479,8 @@ const PromptTemplates = () => {
 
       {/* Add/Edit Template Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
             <DialogTitle>
               {editingTemplate ? 'Edit Prompt Template' : 'Add Prompt Template'}
             </DialogTitle>
@@ -488,7 +488,7 @@ const PromptTemplates = () => {
               Configure a prompt template for LLM interactions
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-4 min-h-0">
+          <ScrollArea className="flex-1 min-h-0 px-6">
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -645,7 +645,7 @@ const PromptTemplates = () => {
               </div>
             </div>
           </ScrollArea>
-          <DialogFooter className="mt-4 border-t pt-4">
+          <DialogFooter className="px-6 pb-6 pt-4 flex-shrink-0 border-t">
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Cancel
             </Button>
@@ -658,14 +658,14 @@ const PromptTemplates = () => {
 
       {/* Test Template Dialog */}
       <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
-        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
             <DialogTitle>Test Prompt Template: {testingTemplate?.name}</DialogTitle>
             <DialogDescription>
               Enter sample data to preview how the prompt will be rendered
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-4 min-h-0">
+          <ScrollArea className="flex-1 min-h-0 px-6">
             <div className="space-y-6 py-4">
               {testingTemplate && (
                 <>
@@ -761,7 +761,7 @@ const PromptTemplates = () => {
               )}
             </div>
           </ScrollArea>
-          <DialogFooter className="mt-4 border-t pt-4">
+          <DialogFooter className="px-6 pb-6 pt-4 flex-shrink-0 border-t">
             <Button variant="outline" onClick={() => setShowTestDialog(false)}>
               Close
             </Button>
@@ -771,8 +771,8 @@ const PromptTemplates = () => {
 
       {/* Compare Templates Dialog */}
       <Dialog open={showCompareDialog} onOpenChange={setShowCompareDialog}>
-        <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
             <DialogTitle>Compare Template Versions</DialogTitle>
             <DialogDescription>
               Compare different versions of {comparingTemplates.left?.type} templates side-by-side
@@ -912,7 +912,7 @@ const PromptTemplates = () => {
               )}
             </div>
           </ScrollArea>
-          <DialogFooter className="mt-4 border-t pt-4">
+          <DialogFooter className="px-6 pb-6 pt-4 flex-shrink-0 border-t">
             <Button variant="outline" onClick={() => setShowCompareDialog(false)}>
               Close
             </Button>

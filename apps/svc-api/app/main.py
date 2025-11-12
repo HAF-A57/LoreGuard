@@ -86,6 +86,13 @@ if not _skip_execution:
         asyncio.create_task(health_checker.start_monitoring())
         logger.info("Job health checker started")
         
+        # Start source scheduler for automatic crawl scheduling
+        from services.scheduler_service import SchedulerService
+        scheduler = SchedulerService(check_interval_seconds=60)
+        app.state.scheduler = scheduler
+        asyncio.create_task(scheduler.start_scheduler())
+        logger.info("Source scheduler started")
+        
         yield
         
         # Shutdown
@@ -95,6 +102,10 @@ if not _skip_execution:
         if hasattr(app.state, 'job_health_checker'):
             app.state.job_health_checker.stop_monitoring()
             logger.info("Job health checker stopped")
+        
+        if hasattr(app.state, 'scheduler'):
+            app.state.scheduler.stop_scheduler()
+            logger.info("Source scheduler stopped")
 
     # Create FastAPI application
     app = FastAPI(

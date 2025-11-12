@@ -44,9 +44,10 @@ class CrawlService:
         if ingestion_service_path:
             self.ingestion_path = Path(ingestion_service_path)
         else:
-            # Auto-detect: go up from svc-api/app/services to svc-ingestion
+            # Auto-detect: go up from svc-api/app/services to app, then to svc-ingestion
+            # In Docker: /app/app/services/crawl_service.py -> /app/svc-ingestion
             current_file = Path(__file__)
-            self.ingestion_path = current_file.parent.parent.parent.parent / "svc-ingestion"
+            self.ingestion_path = current_file.parent.parent.parent / "svc-ingestion"
         
         if not self.ingestion_path.exists():
             raise ValueError(f"Ingestion service path not found: {self.ingestion_path}")

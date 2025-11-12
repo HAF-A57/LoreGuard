@@ -6,6 +6,8 @@ Base spider class with common functionality for all LoreGuard spiders.
 
 import logging
 import re
+import json
+import html as html_module
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Generator
 from urllib.parse import urljoin, urlparse
@@ -37,7 +39,7 @@ class BaseLoreGuardSpider(scrapy.Spider):
         'CONCURRENT_REQUESTS': 8,  # Limit concurrent requests for better control
     }
     
-    def __init__(self, source_id: str = None, max_depth: int = 3, max_artifacts: int = 0, start_urls: str = None, allowed_domains: str = None, job_id: str = None, *args, **kwargs):
+    def __init__(self, source_id: str = None, max_depth: int = 3, max_artifacts: int = 0, start_urls: str = None, allowed_domains: str = None, job_id: str = None, config: str = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         self.source_id = source_id or getattr(self, 'source_id', 'unknown')
@@ -59,6 +61,25 @@ class BaseLoreGuardSpider(scrapy.Spider):
         elif not hasattr(self, 'allowed_domains'):
             self.allowed_domains = []
         
+        # Parse config from JSON string if provided, otherwise use dict or empty dict
+        config_dict = {}
+        if config:
+            if isinstance(config, str):
+                try:
+                    config_dict = json.loads(config)
+                except (json.JSONDecodeError, TypeError):
+                    logger.warning(f"Failed to parse config JSON: {config}")
+                    config_dict = {}
+            elif isinstance(config, dict):
+                config_dict = config
+        
+        # Extract document extraction configuration from config dict
+        extraction_config = config_dict.get('extraction', {}) if config_dict else {}
+        self.extract_pdfs = extraction_config.get('extract_pdfs', True)
+        self.extract_documents = extraction_config.get('extract_documents', True)
+        self.allowed_document_types = extraction_config.get('allowed_document_types', ['pdf', 'docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'])
+        self.max_document_size_mb = extraction_config.get('max_document_size_mb', 50)
+        
         # Statistics tracking
         self.stats = {
             'pages_crawled': 0,
@@ -68,15 +89,18 @@ class BaseLoreGuardSpider(scrapy.Spider):
         }
         
         # Link extractor for finding new URLs
+        # Note: We don't deny PDF/document extensions here because we want to follow them
+        # and let should_follow_link() decide based on extraction config
         self.link_extractor = LinkExtractor(
             allow_domains=self.allowed_domains,
-            deny_extensions=['jpg', 'jpeg', 'png', 'gif', 'svg', 'ico', 'css', 'js'],
+            deny_extensions=['jpg', 'jpeg', 'png', 'gif', 'svg', 'ico', 'css', 'js', 'woff', 'woff2', 'ttf', 'eot'],
             canonicalize=True,
             unique=True
         )
         
         logger.info(f"Initialized spider {self.name} for source {self.source_id} with {len(self.start_urls)} start URLs")
         logger.info(f"  Max depth: {self.max_depth}, Max artifacts: {self.max_artifacts if self.max_artifacts > 0 else 'unlimited'}")
+        logger.info(f"  Extract PDFs: {self.extract_pdfs}, Extract Documents: {self.extract_documents}, Max size: {self.max_document_size_mb}MB")
     
     def start_requests(self) -> Generator[Request, None, None]:
         """Generate initial requests."""
@@ -121,6 +145,13 @@ class BaseLoreGuardSpider(scrapy.Spider):
     def extract_content(self, response: Response) -> Generator:
         """Extract content from the current page."""
         
+        # Check if this is a document response (PDF, DOCX, etc.) by Content-Type
+        # This handles cases where URLs don't have file extensions but serve documents
+        if self.is_document_response(response):
+            # Process as document immediately
+            yield from self.process_document(response)
+            return
+        
         # Skip non-HTML content for link extraction
         if not self.is_html_response(response):
             # But still process as potential document
@@ -134,6 +165,10 @@ class BaseLoreGuardSpider(scrapy.Spider):
         except Exception as e:
             logger.warning(f"Cannot parse response as HTML: {e}. Skipping content extraction for {response.url}")
             return
+        
+        # Extract document links from meta tags and HTML attributes BEFORE following regular links
+        # This ensures we catch high-value document links that might be missed by link following
+        yield from self.extract_document_links_from_page(response)
         
         # Extract main content
         content_selectors = [
@@ -166,15 +201,186 @@ class BaseLoreGuardSpider(scrapy.Spider):
         if len(text_content) > 100:
             yield from self.process_document(response, text_content)
     
+    def extract_document_links_from_page(self, response: Response) -> Generator:
+        """Extract document download links from HTML page using multiple detection methods."""
+        
+        try:
+            # Method 1: Extract from meta tags (common in academic repositories)
+            meta_selectors = [
+                'meta[name="citation_pdf_url"]::attr(content)',
+                'meta[name="bepress_citation_pdf_url"]::attr(content)',
+                'meta[property="og:url"][content*="pdf"]::attr(content)',
+                'link[rel="alternate"][type="application/pdf"]::attr(href)',
+            ]
+            
+            for selector in meta_selectors:
+                try:
+                    urls = response.css(selector).getall()
+                    for url in urls:
+                        if url:
+                            # Clean and normalize URL
+                            url = url.strip()
+                            # Decode HTML entities (e.g., &amp; -> &)
+                            url = html_module.unescape(url)
+                            if not url.startswith('http'):
+                                url = urljoin(response.url, url)
+                            
+                            if self.should_follow_link(url, response):
+                                logger.info(f"Found document link from meta tag: {url}")
+                                yield Request(
+                                    url=url,
+                                    callback=self.parse,
+                                    meta={
+                                        'source_id': self.source_id,
+                                        'depth': response.meta.get('depth', 0) + 1,
+                                        'job_id': self.crawl_job_id,
+                                        'link_text': 'meta_tag_document_link',
+                                        'dont_redirect': False,  # Allow redirects for document links
+                                    },
+                                    priority=10  # Higher priority for document links
+                                )
+                except Exception as e:
+                    logger.debug(f"Error extracting meta tag links with selector {selector}: {e}")
+                    continue
+            
+            # Method 2: Extract links with download attribute or PDF-related attributes
+            download_link_selectors = [
+                'a[download]::attr(href)',
+                'a[type*="pdf"]::attr(href)',
+                'a[type*="application/pdf"]::attr(href)',
+                'a[aria-label*="download" i]::attr(href)',
+                'a[aria-label*="pdf" i]::attr(href)',
+                'a[data-download]::attr(href)',
+                'a[data-file]::attr(href)',
+            ]
+            
+            for selector in download_link_selectors:
+                try:
+                    urls = response.css(selector).getall()
+                    for url in urls:
+                        if url:
+                            url = url.strip()
+                            # Decode HTML entities
+                            url = html_module.unescape(url)
+                            if not url.startswith('http'):
+                                url = urljoin(response.url, url)
+                            
+                            if self.should_follow_link(url, response):
+                                logger.info(f"Found document link with download attribute: {url}")
+                                yield Request(
+                                    url=url,
+                                    callback=self.parse,
+                                    meta={
+                                        'source_id': self.source_id,
+                                        'depth': response.meta.get('depth', 0) + 1,
+                                        'job_id': self.crawl_job_id,
+                                        'link_text': 'download_attribute_link',
+                                    },
+                                    priority=10
+                                )
+                except Exception as e:
+                    logger.debug(f"Error extracting download attribute links: {e}")
+                    continue
+            
+            # Method 3: Extract links with download-related class names or IDs
+            download_class_selectors = [
+                'a.download::attr(href)',
+                'a.pdf-download::attr(href)',
+                'a.document-download::attr(href)',
+                'a.file-download::attr(href)',
+                'a#download::attr(href)',
+                'a#pdf-download::attr(href)',
+                'button.download a::attr(href)',
+                'button.pdf-download a::attr(href)',
+            ]
+            
+            for selector in download_class_selectors:
+                try:
+                    urls = response.css(selector).getall()
+                    for url in urls:
+                        if url:
+                            url = url.strip()
+                            # Decode HTML entities
+                            url = html_module.unescape(url)
+                            if not url.startswith('http'):
+                                url = urljoin(response.url, url)
+                            
+                            if self.should_follow_link(url, response):
+                                logger.info(f"Found document link with download class: {url}")
+                                yield Request(
+                                    url=url,
+                                    callback=self.parse,
+                                    meta={
+                                        'source_id': self.source_id,
+                                        'depth': response.meta.get('depth', 0) + 1,
+                                        'job_id': self.crawl_job_id,
+                                        'link_text': 'download_class_link',
+                                    },
+                                    priority=10
+                                )
+                except Exception as e:
+                    logger.debug(f"Error extracting download class links: {e}")
+                    continue
+            
+            # Method 4: Extract links based on anchor text patterns (download keywords)
+            # This is more expensive, so we do it last
+            if self.extract_pdfs or self.extract_documents:
+                download_keywords = ['download', 'pdf', 'document', 'paper', 'report', 'full text', 'view pdf']
+                all_links = response.css('a::attr(href)').getall()
+                all_texts = response.css('a::text').getall()
+                
+                for link, text in zip(all_links, all_texts):
+                    if link and text:
+                        text_lower = text.lower().strip()
+                        # Check if anchor text contains download keywords
+                        if any(keyword in text_lower for keyword in download_keywords):
+                            url = link.strip()
+                            # Decode HTML entities
+                            url = html_module.unescape(url)
+                            if not url.startswith('http'):
+                                url = urljoin(response.url, url)
+                            
+                            if self.should_follow_link(url, response):
+                                logger.info(f"Found document link from anchor text '{text}': {url}")
+                                yield Request(
+                                    url=url,
+                                    callback=self.parse,
+                                    meta={
+                                        'source_id': self.source_id,
+                                        'depth': response.meta.get('depth', 0) + 1,
+                                        'job_id': self.crawl_job_id,
+                                        'link_text': text.strip(),
+                                    },
+                                    priority=8  # Slightly lower priority than explicit attributes
+                                )
+        
+        except Exception as e:
+            logger.warning(f"Error extracting document links from page {response.url}: {e}")
+            # Don't fail the entire page if link extraction fails
+    
     def process_document(self, response: Response, text_content: str = None) -> Generator:
         """Process a document and extract metadata."""
         
-        # Check max_artifacts limit and close spider if reached
+        # Check max_artifacts limit BEFORE incrementing to ensure we process exactly max_artifacts
+        # This ensures the last document (the 100th) gets fully processed
         if self.max_artifacts > 0 and self.stats['documents_found'] >= self.max_artifacts:
             logger.info(f"Reached max_artifacts limit ({self.max_artifacts}). Closing spider.")
             # Use Scrapy's close spider mechanism
             from scrapy.exceptions import CloseSpider
             raise CloseSpider(f'max_artifacts_reached_{self.max_artifacts}')
+        
+        # Check file size limit for documents
+        content_length = len(response.body)
+        max_size_bytes = self.max_document_size_mb * 1024 * 1024
+        
+        # Only check size for actual documents (not HTML pages)
+        if self.is_document_response(response) and content_length > max_size_bytes:
+            size_mb = content_length / 1024 / 1024
+            logger.warning(
+                f"Skipping document {response.url}: "
+                f"size {size_mb:.2f}MB exceeds limit {self.max_document_size_mb}MB"
+            )
+            return
         
         try:
             # Create artifact item
@@ -323,8 +529,12 @@ class BaseLoreGuardSpider(scrapy.Spider):
         
         current_depth = response.meta.get('depth', 0)
         
-        # Extract links using the link extractor
-        links = self.link_extractor.extract_links(response)
+        # Extract links using the link extractor (with error handling for non-text responses)
+        try:
+            links = self.link_extractor.extract_links(response)
+        except (AttributeError, TypeError) as e:
+            logger.warning(f"Cannot extract links from {response.url}: {e} (possibly binary content)")
+            return
         
         for link in links:
             # Apply custom link filtering
@@ -348,9 +558,89 @@ class BaseLoreGuardSpider(scrapy.Spider):
         if not parsed.scheme or not parsed.netloc:
             return False
         
-        # Skip certain file types
+        url_lower = url.lower()
+        
+        # Check document extraction configuration
+        if self.extract_documents:
+            # Build list of document extensions to check
+            document_extensions = [f'.{ext}' for ext in self.allowed_document_types]
+            
+            # Check if URL is a document type we want to extract (by extension)
+            if any(url_lower.endswith(ext) for ext in document_extensions):
+                # Special handling for PDFs
+                if url_lower.endswith('.pdf'):
+                    return self.extract_pdfs
+                # Allow other document types if extract_documents is True
+                return True
+            
+            # Check for common document download URL patterns (CGI scripts, download handlers, etc.)
+            # These URLs may serve PDFs/documents even without file extensions
+            # Based on comprehensive research of academic repositories and document serving patterns
+            document_url_patterns = [
+                # CGI scripts (common in academic repositories)
+                r'viewcontent',      # Digital Commons, bepress (viewcontent.cgi)
+                r'viewfile',         # Alternative view file handler
+                r'getfile',          # Get file handler
+                r'servefile',        # Serve file handler
+                r'serve',            # Serve file handler
+                
+                # PHP/ASP handlers
+                r'file\.php',        # PHP file handlers
+                r'file\.asp',        # ASP file handlers
+                r'file\.aspx',       # ASPX file handlers
+                r'download\.php',    # PHP download handlers
+                r'download\.asp',    # ASP download handlers
+                r'download\.aspx',   # ASPX download handlers
+                r'document\.php',    # PHP document handlers
+                r'pdf\.php',         # PHP PDF handlers
+                r'get\.php',         # PHP get handlers
+                r'fetch\.php',       # PHP fetch handlers
+                
+                # API endpoints
+                r'/api/download',    # API download endpoints
+                r'/api/file',       # API file endpoints
+                r'/api/document',   # API document endpoints
+                r'/rest/api/document', # REST API document endpoints
+                
+                # Path patterns
+                r'/download/',       # Download directory
+                r'/file/',          # File directory
+                r'/document/',      # Document directory
+                r'/pdf/',           # PDF directory
+                r'/documents/',     # Documents directory
+                r'/files/',         # Files directory
+                r'/publications/',  # Publications directory
+                r'/papers/',        # Papers directory
+                
+                # DSpace patterns
+                r'/bitstream/handle/', # DSpace bitstreams
+                r'/xmlui/bitstream/handle/', # DSpace XML UI bitstreams
+                
+                # EPrints patterns
+                r'/id/eprint/',    # EPrints document IDs
+                r'/eprint/',       # EPrints documents
+                
+                # Query parameter patterns
+                r'[?&]download=',  # Download query parameter
+                r'[?&]file=',      # File query parameter
+                r'[?&]document=',  # Document query parameter
+                r'[?&]pdf=',       # PDF query parameter
+                r'[?&]id=.*pdf',   # ID parameter with PDF in value
+                
+                # PDF with query parameters
+                r'\.pdf\?',        # PDF with query parameters
+                r'\.pdf&',         # PDF with query parameters (alternative)
+            ]
+            
+            # Check if URL matches document download patterns
+            if self.extract_pdfs and any(re.search(pattern, url_lower) for pattern in document_url_patterns):
+                # Also check if the link text or surrounding context suggests it's a PDF/download
+                # We'll follow it and let Content-Type detection handle it
+                return True
+        
+        # Skip certain file types if document extraction is disabled
         skip_extensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.zip', '.rar']
-        if any(url.lower().endswith(ext) for ext in skip_extensions):
+        if any(url_lower.endswith(ext) for ext in skip_extensions):
             return False
         
         # Skip social media and external links (can be overridden)
@@ -396,6 +686,31 @@ class BaseLoreGuardSpider(scrapy.Spider):
         
         content_type = response.headers.get('Content-Type', b'').decode('utf-8').lower()
         return 'text/html' in content_type or 'application/xhtml' in content_type
+    
+    def is_document_response(self, response: Response) -> bool:
+        """Check if response is a document (PDF, DOCX, etc.) based on Content-Type header."""
+        
+        content_type = response.headers.get('Content-Type', b'').decode('utf-8').lower()
+        
+        # Check Content-Type header first
+        document_mime_types = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',  # DOCX
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',  # PPTX
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',  # XLSX
+            'application/vnd.ms-powerpoint',
+            'application/vnd.ms-excel',
+            'application/rtf',
+        ]
+        
+        if any(doc_type in content_type for doc_type in document_mime_types):
+            return True
+        
+        # Fallback to URL extension check
+        url_lower = response.url.lower()
+        document_extensions = [f'.{ext}' for ext in self.allowed_document_types]
+        return any(url_lower.endswith(ext) for ext in document_extensions)
     
     def closed(self, reason: str):
         """Called when spider closes."""
@@ -489,8 +804,17 @@ class AcademicSpider(BaseLoreGuardSpider):
         })
     
     def should_follow_link(self, url: str, response: Response) -> bool:
-        """Academic-specific link filtering."""
+        """Academic-specific link filtering - allows PDFs and prioritizes research content."""
         
+        # Allow PDFs for academic content if extraction is enabled
+        url_lower = url.lower()
+        if url_lower.endswith('.pdf'):
+            # Check if PDF extraction is enabled (defaults to True if not set)
+            extract_pdfs = getattr(self, 'extract_pdfs', True)
+            if extract_pdfs:
+                return True
+        
+        # Call parent method for other links
         if not super().should_follow_link(url, response):
             return False
         
@@ -501,17 +825,7 @@ class AcademicSpider(BaseLoreGuardSpider):
             r'/research/',
             r'/journal/',
             r'/article/',
-            r'\.pdf$',  # Allow PDFs for academic content
         ]
         
         return any(re.search(pattern, url) for pattern in academic_patterns)
-    
-    def should_follow_link(self, url: str, response: Response) -> bool:
-        """Override to allow PDFs for academic content."""
-        
-        # Call parent method but allow PDFs
-        if url.lower().endswith('.pdf'):
-            return True
-        
-        return super().should_follow_link(url, response)
 

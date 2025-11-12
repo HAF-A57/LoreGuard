@@ -114,7 +114,7 @@ const Library = () => {
       <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold">Signal Library<span className="placeholder-indicator">⭐</span></h1>
+            <h1 className="text-3xl font-bold">Signal Library</h1>
             <p className="text-muted-foreground">Curated high-value artifacts for distribution</p>
           </div>
           <div className="flex items-center space-x-2">
@@ -191,12 +191,11 @@ const Library = () => {
             {filteredItems.map((item) => (
               <Card 
                 key={item.id} 
-                className={`aulendur-hover-transform cursor-pointer transition-all relative ${
+                className={`aulendur-hover-transform cursor-pointer transition-all ${
                   selectedItems.includes(item.id) ? 'ring-2 ring-primary' : ''
                 }`}
                 onClick={() => toggleSelection(item.id)}
               >
-                <span className="placeholder-card-indicator">⭐</span>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

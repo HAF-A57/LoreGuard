@@ -34,15 +34,26 @@ import { Toaster } from './components/ui/sonner.jsx'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  // Default to dark mode, but check localStorage for saved preference
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('loreguard_theme')
+    return savedTheme ? savedTheme === 'dark' : true // Default to dark mode
+  })
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [assistantCollapsed, setAssistantCollapsed] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [showNotFound, setShowNotFound] = useState(false)
 
-  // Initialize app
+  // Initialize app and theme
   useEffect(() => {
+    // Apply dark mode class on mount
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+
     // Check if user is already authenticated (from localStorage, etc.)
     const checkAuth = () => {
       const savedAuth = localStorage.getItem('loreguard_auth')
@@ -54,11 +65,18 @@ function App() {
 
     // Simulate initial loading
     setTimeout(checkAuth, 3000)
-  }, [])
+  }, [isDarkMode])
 
   const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode)
-    document.documentElement.classList.toggle('dark')
+    const newDarkMode = !isDarkMode
+    setIsDarkMode(newDarkMode)
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('loreguard_theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('loreguard_theme', 'light')
+    }
   }
 
   const handleLogin = () => {
@@ -85,7 +103,7 @@ function App() {
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard, component: Dashboard },
     { id: 'artifacts', name: 'Artifacts', icon: FileText, component: Artifacts },
     { id: 'sources', name: 'Sources', icon: Globe, component: Sources },
-    { id: 'library', name: 'Library', icon: BookOpen, component: Library },
+    { id: 'library', name: 'Signals Library', icon: BookOpen, component: Library },
     { id: 'evaluations', name: 'Evaluations', icon: Target, component: Evaluations },
     { id: 'jobs', name: 'Jobs', icon: Briefcase, component: Jobs },
     { id: 'analytics', name: 'Analytics', icon: BarChart3, component: Analytics },
@@ -223,7 +241,7 @@ function App() {
         {/* Main Content - Scrollable */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden h-full">
           <div className="min-h-full">
-            <CurrentComponent />
+            <CurrentComponent onNavigateTo={handleNavigateTo} />
           </div>
         </main>
 

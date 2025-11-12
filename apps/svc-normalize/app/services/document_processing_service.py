@@ -80,6 +80,10 @@ class DocumentProcessingService:
         
         try:
             # Import models (available via sys.path modification)
+            # Import models from API service - normalize container has API models mounted at /app/svc-api-app
+            import sys
+            if '/app/svc-api-app' not in sys.path:
+                sys.path.insert(0, '/app/svc-api-app')
             from models.artifact import Artifact, DocumentMetadata
             
             # Load artifact
@@ -129,10 +133,13 @@ class DocumentProcessingService:
             if not text_content:
                 raise RuntimeError(f"No text content extracted from artifact {artifact_id}")
             
-            # Extract metadata
+            # Extract metadata (include artifact URI for LLM extraction)
+            file_metadata = parse_result.get('file_metadata', {})
+            file_metadata['uri'] = artifact.uri  # Add URI for LLM extraction
+            
             metadata = await self.metadata_service.extract_metadata(
                 text_content=text_content,
-                file_metadata=parse_result.get('file_metadata', {}),
+                file_metadata=file_metadata,
                 processing_options=options
             )
             
@@ -231,6 +238,30 @@ class DocumentProcessingService:
     def _trigger_evaluation(self, artifact_id: str):
         """Trigger evaluation service for newly normalized artifact"""
         try:
+            # Try to use Celery task queue first (preferred method)
+            use_queue = getattr(settings, 'USE_TASK_QUEUE', True)
+            
+            if use_queue:
+                try:
+                    import sys
+                    import pathlib
+                    # Get project root: document_processing_service.py -> services -> app -> svc-normalize -> apps -> LoreGuard
+                    project_root = pathlib.Path(__file__).resolve().parent.parent.parent.parent.parent.parent
+                    if str(project_root) not in sys.path:
+                        sys.path.insert(0, str(project_root))
+                    
+                    from apps.shared.tasks.evaluate_tasks import evaluate_artifact
+                    
+                    # Enqueue evaluation task (fire-and-forget)
+                    task = evaluate_artifact.delay(str(artifact_id))
+                    logger.info(f"Enqueued evaluation task for artifact {artifact_id} (task_id: {task.id})")
+                    return
+                except ImportError as e:
+                    logger.warning(f"Celery not available, falling back to HTTP: {e}")
+                except Exception as e:
+                    logger.warning(f"Failed to enqueue evaluation task, falling back to HTTP: {e}")
+            
+            # Fallback to HTTP if queue not available
             import httpx
             api_url = settings.API_SERVICE_URL
             

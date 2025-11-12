@@ -47,6 +47,7 @@ class MetadataExtractorService:
         self.nlp_model = None
         self.country_names = set()
         self.region_names = set()
+        self.llm_service = None
         
         # Initialize NLP model if available
         if SPACY_AVAILABLE:
@@ -60,6 +61,15 @@ class MetadataExtractorService:
         # Initialize geographic data
         if PYCOUNTRY_AVAILABLE:
             self._initialize_geographic_data()
+        
+        # Initialize LLM metadata extraction service (lazy import to avoid circular dependencies)
+        try:
+            from app.services.llm_metadata_extraction import LLMMetadataExtractionService
+            self.llm_service = LLMMetadataExtractionService()
+            logger.info("LLM metadata extraction service initialized")
+        except Exception as e:
+            logger.warning(f"Could not initialize LLM metadata extraction service: {e}")
+            self.llm_service = None
     
     def _initialize_geographic_data(self):
         """Initialize geographic reference data."""
@@ -95,6 +105,7 @@ class MetadataExtractorService:
     ) -> DocumentMetadata:
         """
         Extract structured metadata from document content.
+        Uses LLM-based extraction if available, falls back to regex-based extraction.
         
         Args:
             text_content: Full text content of the document
@@ -106,6 +117,7 @@ class MetadataExtractorService:
         """
         
         options = processing_options or {}
+        use_llm = options.get('use_llm_extraction', True)  # Default to True
         
         logger.info(f"Extracting metadata from document ({len(text_content)} characters)")
         
@@ -129,63 +141,116 @@ class MetadataExtractorService:
         }
         
         try:
-            # Basic text statistics
+            # Basic text statistics (always extract)
             metadata.update(self._extract_text_statistics(text_content))
             
-            # File metadata
+            # File metadata (always extract)
             metadata.update(self._extract_file_metadata(file_metadata))
             
-            # Title extraction
-            title = self._extract_title(text_content, file_metadata.get('filename', ''))
-            if title:
-                metadata['title'] = title
+            # Try LLM-based extraction first if enabled and available
+            llm_metadata = None
+            if use_llm and self.llm_service:
+                try:
+                    artifact_uri = file_metadata.get('uri') or file_metadata.get('filename', 'unknown')
+                    llm_metadata = await self.llm_service.extract_metadata_llm(
+                        text_content=text_content,
+                        artifact_uri=artifact_uri,
+                        processing_options=options
+                    )
+                    
+                    if llm_metadata:
+                        logger.info("Successfully extracted metadata using LLM")
+                        # Map LLM response to our metadata structure
+                        if llm_metadata.get('title'):
+                            metadata['title'] = llm_metadata['title']
+                        if llm_metadata.get('authors'):
+                            metadata['authors'] = llm_metadata['authors']
+                        if llm_metadata.get('organization'):
+                            metadata['organization'] = llm_metadata['organization']
+                        if llm_metadata.get('publication_date'):
+                            # Parse date string to datetime
+                            try:
+                                from dateutil import parser as date_parser
+                                metadata['publication_date'] = date_parser.parse(llm_metadata['publication_date'])
+                            except Exception:
+                                logger.warning(f"Could not parse publication_date: {llm_metadata['publication_date']}")
+                        if llm_metadata.get('topics'):
+                            metadata['topics'] = llm_metadata['topics']
+                        if llm_metadata.get('geo_location'):
+                            metadata['geographic_scope'] = [llm_metadata['geo_location']]
+                        if llm_metadata.get('language'):
+                            metadata['language'] = llm_metadata['language']
+                        
+                        # Set high confidence for LLM extraction
+                        metadata['confidence_score'] = 0.9
+                        metadata['processing_quality'] = 'excellent'
+                except Exception as e:
+                    logger.warning(f"LLM metadata extraction failed, falling back to regex: {e}")
+                    llm_metadata = None
             
-            # Author extraction
-            authors = self._extract_authors(text_content)
-            if authors:
-                metadata['authors'] = authors
-            
-            # Organization extraction
-            organization = self._extract_organization(text_content)
-            if organization:
-                metadata['organization'] = organization
-            
-            # Date extraction
-            pub_date = self._extract_publication_date(text_content)
-            if pub_date:
-                metadata['publication_date'] = pub_date
-            
-            # Topic and keyword extraction
-            topics = self._extract_topics(text_content)
-            if topics:
-                metadata['topics'] = topics
-            
-            # Subject classification
-            subjects = self._extract_subjects(text_content)
-            if subjects:
-                metadata['subjects'] = subjects
-            
-            # Geographic scope
-            geographic_scope = self._extract_geographic_scope(text_content)
-            if geographic_scope:
-                metadata['geographic_scope'] = geographic_scope
+            # Fall back to regex-based extraction if LLM didn't provide results
+            if not llm_metadata:
+                logger.info("Using regex-based metadata extraction")
+                
+                # Title extraction
+                if not metadata.get('title'):
+                    title = self._extract_title(text_content, file_metadata.get('filename', ''))
+                    if title:
+                        metadata['title'] = title
+                
+                # Author extraction
+                if not metadata.get('authors'):
+                    authors = self._extract_authors(text_content)
+                    if authors:
+                        metadata['authors'] = authors
+                
+                # Organization extraction
+                if not metadata.get('organization'):
+                    organization = self._extract_organization(text_content)
+                    if organization:
+                        metadata['organization'] = organization
+                
+                # Date extraction
+                if not metadata.get('publication_date'):
+                    pub_date = self._extract_publication_date(text_content)
+                    if pub_date:
+                        metadata['publication_date'] = pub_date
+                
+                # Topic and keyword extraction
+                if not metadata.get('topics'):
+                    topics = self._extract_topics(text_content)
+                    if topics:
+                        metadata['topics'] = topics
+                
+                # Subject classification
+                subjects = self._extract_subjects(text_content)
+                if subjects:
+                    metadata['subjects'] = subjects
+                
+                # Geographic scope
+                if not metadata.get('geographic_scope'):
+                    geographic_scope = self._extract_geographic_scope(text_content)
+                    if geographic_scope:
+                        metadata['geographic_scope'] = geographic_scope
             
             # Language detection (if not already done)
             if not metadata.get('language') and options.get('detect_language', True):
                 metadata['language'] = self._detect_language_code(text_content)
             
-            # Calculate confidence score
-            metadata['confidence_score'] = self._calculate_confidence_score(metadata, text_content)
+            # Calculate confidence score (if not already set by LLM)
+            if metadata['confidence_score'] == 0.0:
+                metadata['confidence_score'] = self._calculate_confidence_score(metadata, text_content)
             
-            # Assess processing quality
-            metadata['processing_quality'] = self._assess_processing_quality(metadata, text_content)
+            # Assess processing quality (if not already set by LLM)
+            if metadata['processing_quality'] == 'unknown':
+                metadata['processing_quality'] = self._assess_processing_quality(metadata, text_content)
             
             logger.info(f"Metadata extraction completed with confidence {metadata['confidence_score']:.2f}")
             
             return DocumentMetadata(**metadata)
             
         except Exception as e:
-            logger.error(f"Metadata extraction failed: {e}")
+            logger.error(f"Metadata extraction failed: {e}", exc_info=True)
             # Return basic metadata even if extraction fails
             return DocumentMetadata(
                 word_count=len(text_content.split()) if text_content else 0,

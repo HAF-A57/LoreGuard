@@ -214,10 +214,12 @@
 }
 
 /* Ensure modals and dialogs can scroll properly */
+/* Dialog content should use flex layout for proper scrolling */
+/* Removed overflow-y: auto to allow flex children (ScrollArea) to handle scrolling */
 [data-slot="dialog-content"],
 [data-slot="alert-dialog-content"] {
   max-height: calc(100vh - 4rem);
-  overflow-y: auto;
+  /* overflow handled by flex children (ScrollArea) */
 }
 
 /* Ensure main content area scrolls properly */
@@ -252,6 +254,174 @@ body:has([data-slot="dialog-overlay"]:not([data-state="closed"])) {
     opacity: 0.7;
     text-shadow: 0 0 12px rgba(168, 85, 247, 1), 0 0 16px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.6);
   }
+}
+
+/* Collapsible animations - smooth transitions */
+@keyframes collapsible-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+.animate-collapsible-down {
+  animation: collapsible-down 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-collapsible-up {
+  animation: collapsible-up 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ensure smooth transitions for Radix Collapsible */
+[data-slot="collapsible-content"] {
+  transition: height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hide scroll area corner (brackets) - multiple selectors to catch all variations */
+[data-slot="scroll-area"] [data-radix-scroll-area-corner],
+[data-radix-scroll-area-corner],
+[data-slot="scroll-area-corner"],
+.scroll-area-corner,
+[data-radix-scroll-area-scrollbar][orientation="horizontal"],
+[data-radix-scroll-area-scrollbar][data-orientation="horizontal"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  pointer-events: none !important;
+  content: none !important;
+}
+
+/* Hide any text content that might appear in scroll area corners */
+[data-radix-scroll-area-corner]::before,
+[data-radix-scroll-area-corner]::after,
+[data-radix-scroll-area-corner] *,
+[data-radix-scroll-area-corner]::text {
+  display: none !important;
+  visibility: hidden !important;
+  content: none !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  color: transparent !important;
+}
+
+/* Ensure no horizontal scrollbar appears in scroll areas */
+[data-slot="scroll-area-viewport"] {
+  overflow-x: hidden !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* Prevent any text nodes from appearing in scroll area corners */
+[data-slot="scroll-area"] * {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Ensure artifact cards in sidebar are properly constrained */
+aside[class*="w-80"] [data-slot="card"] {
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+aside[class*="w-80"] [data-slot="card-header"],
+aside[class*="w-80"] [data-slot="card-content"] {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* Ensure all children of sidebar cards respect width constraints */
+aside[class*="w-80"] [data-slot="card"] * {
+  max-width: 100%;
+}
+
+/* Prevent badges from causing overflow */
+aside[class*="w-80"] [data-slot="badge"] {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tool usage animation - metallic gold glow */
+@keyframes tool-glow {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 3px rgba(212, 175, 55, 0.6)) drop-shadow(0 1px 2px rgba(255, 255, 255, 0.8));
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.8)) drop-shadow(0 2px 4px rgba(255, 255, 255, 1));
+    transform: scale(1.05);
+  }
+}
+
+.tool-icon-glow {
+  animation: tool-glow 2s ease-in-out infinite;
+}
+
+/* Markdown links - enhanced visibility for dark mode */
+.markdown-link {
+  color: rgb(96, 165, 250) !important; /* blue-400 - bright and visible in dark mode */
+  text-decoration: underline;
+}
+
+.markdown-link:hover {
+  color: rgb(147, 197, 253) !important; /* blue-300 - lighter on hover */
+}
+
+/* Ensure AI Assistant doesn't overflow */
+.ai-assistant-container {
+  max-height: 100%;
+  overflow: hidden;
+}
+
+/* Hide scroll area corners when AI Assistant is collapsed (w-12) */
+.ai-assistant-container.w-12 [data-radix-scroll-area-corner],
+.ai-assistant-container.w-12 [data-slot="scroll-area"] [data-radix-scroll-area-corner] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  pointer-events: none !important;
+  content: none !important;
+}
+
+/* Prevent horizontal overflow in scroll areas */
+/* Viewport should use flex-1 min-h-0 when ScrollArea is in a flex container */
+[data-slot="scroll-area-viewport"] {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  width: 100% !important;
+  /* Use flex-1 min-h-0 instead of height: 100% for proper flex layout */
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
 }
 
 /* Placeholder indicator for cards/tiles */

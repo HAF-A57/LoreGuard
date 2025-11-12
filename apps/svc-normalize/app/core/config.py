@@ -280,8 +280,15 @@ class Settings(BaseSettings):
     # =============================================================================
     
     # Other LoreGuard services
+    # In Docker, use service name; otherwise use host IP
+    # Check if we're in Docker by checking if service name resolves
+    _default_api_url = os.getenv('API_SERVICE_URL')
+    if not _default_api_url:
+        # Try Docker service name first (for container-to-container communication)
+        _default_api_url = "http://loreguard-api:8000"
+    
     API_SERVICE_URL: str = Field(
-        default=f"http://{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:8000",
+        default=_default_api_url,
         env="API_SERVICE_URL"
     )
     INGESTION_SERVICE_URL: str = Field(

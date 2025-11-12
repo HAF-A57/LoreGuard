@@ -7,29 +7,54 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 import uuid
+import json
 
 from db.database import get_db
 from models.source import Source
 from models.artifact import Artifact
 from models.job import Job
 from schemas.source import SourceResponse, SourceListResponse, SourceCreate, SourceUpdate
-from services.crawl_service import CrawlService
+from services.crawl_service_subprocess import CrawlServiceSubprocess
+from services.source_health import SourceHealthService
 
 router = APIRouter()
+
+def serialize_source(source: Source, doc_count: int = 0) -> dict:
+    """Serialize source model to response format"""
+    source_dict = {
+        "id": uuid.UUID(source.id) if isinstance(source.id, str) else source.id,
+        "name": source.name,
+        "type": source.type,
+        "config": source.config if isinstance(source.config, dict) else {},
+        "schedule": source.schedule,
+        "status": source.status,
+        "tags": json.loads(source.tags) if source.tags else [],
+        "last_run": source.last_run,
+        "created_at": source.created_at,
+        "updated_at": source.updated_at,
+        "document_count": doc_count
+    }
+    return source_dict
 
 @router.get("/", response_model=SourceListResponse)
 async def list_sources(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     status: Optional[str] = Query(None),
+    include_deleted: bool = Query(False, description="Include deleted sources"),
     db: Session = Depends(get_db)
 ):
     """
     List all data sources with optional filtering
+    By default, excludes deleted sources unless include_deleted=True
     """
     query = db.query(Source)
     
-    # Apply status filter
+    # Exclude deleted sources by default
+    if not include_deleted:
+        query = query.filter(Source.status != 'deleted')
+    
+    # Apply status filter (if provided, this overrides include_deleted)
     if status:
         query = query.filter(Source.status == status)
     
@@ -46,9 +71,15 @@ async def list_sources(
             Artifact.source_id == source.id
         ).scalar()
         
+        # SourceListItem only needs specific fields
         source_dict = {
-            **source.__dict__,
-            "document_count": doc_count
+            "id": uuid.UUID(source.id) if isinstance(source.id, str) else source.id,
+            "name": source.name,
+            "type": source.type,
+            "status": source.status,
+            "last_run": source.last_run,
+            "document_count": doc_count,
+            "created_at": source.created_at
         }
         source_responses.append(source_dict)
     
@@ -67,22 +98,18 @@ async def get_source(
     """
     Get specific source by ID
     """
-    source = db.query(Source).filter(Source.id == source_id).first()
+    # Convert UUID to string for database query (id is stored as VARCHAR)
+    source = db.query(Source).filter(Source.id == str(source_id)).first()
     
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
     
     # Add document count
     doc_count = db.query(func.count(Artifact.id)).filter(
-        Artifact.source_id == source_id
+        Artifact.source_id == str(source_id)
     ).scalar()
     
-    source_dict = {
-        **source.__dict__,
-        "document_count": doc_count
-    }
-    
-    return source_dict
+    return serialize_source(source, doc_count)
 
 @router.post("/", response_model=SourceResponse)
 async def create_source(
@@ -92,12 +119,27 @@ async def create_source(
     """
     Create new data source
     """
-    db_source = Source(**source.dict())
+    source_data = source.dict()
+    
+    # Validate config has start_urls
+    if not source_data.get('config', {}).get('start_urls'):
+        raise HTTPException(
+            status_code=400,
+            detail="At least one start_url is required in config.start_urls"
+        )
+    
+    # Convert tags list to JSON string for storage
+    if source_data.get('tags'):
+        source_data['tags'] = json.dumps(source_data['tags'])
+    else:
+        source_data['tags'] = None
+    
+    db_source = Source(**source_data)
     db.add(db_source)
     db.commit()
     db.refresh(db_source)
     
-    return {**db_source.__dict__, "document_count": 0}
+    return serialize_source(db_source, 0)
 
 @router.put("/{source_id}", response_model=SourceResponse)
 async def update_source(
@@ -108,13 +150,21 @@ async def update_source(
     """
     Update existing source
     """
-    db_source = db.query(Source).filter(Source.id == source_id).first()
+    # Convert UUID to string for database query
+    db_source = db.query(Source).filter(Source.id == str(source_id)).first()
     
     if not db_source:
         raise HTTPException(status_code=404, detail="Source not found")
     
     # Update fields
     update_data = source_update.dict(exclude_unset=True)
+    
+    # Convert tags list to JSON string if provided
+    if 'tags' in update_data and update_data['tags'] is not None:
+        update_data['tags'] = json.dumps(update_data['tags'])
+    elif 'tags' in update_data and update_data['tags'] is None:
+        update_data['tags'] = None
+    
     for field, value in update_data.items():
         setattr(db_source, field, value)
     
@@ -123,10 +173,10 @@ async def update_source(
     
     # Add document count
     doc_count = db.query(func.count(Artifact.id)).filter(
-        Artifact.source_id == source_id
+        Artifact.source_id == str(source_id)
     ).scalar()
     
-    return {**db_source.__dict__, "document_count": doc_count}
+    return serialize_source(db_source, doc_count)
 
 @router.delete("/{source_id}")
 async def delete_source(
@@ -136,7 +186,8 @@ async def delete_source(
     """
     Delete source (soft delete by setting status to 'deleted')
     """
-    db_source = db.query(Source).filter(Source.id == source_id).first()
+    # Convert UUID to string for database query
+    db_source = db.query(Source).filter(Source.id == str(source_id)).first()
     
     if not db_source:
         raise HTTPException(status_code=404, detail="Source not found")
@@ -148,7 +199,7 @@ async def delete_source(
 
 @router.post("/{source_id}/trigger")
 async def trigger_source_crawl(
-    source_id: uuid.UUID,
+    source_id: str,
     db: Session = Depends(get_db)
 ):
     """
@@ -157,7 +208,7 @@ async def trigger_source_crawl(
     Validates source configuration and starts a Scrapy spider to crawl the source.
     Creates a job record to track the crawl progress.
     """
-    source = db.query(Source).filter(Source.id == source_id).first()
+    source = db.query(Source).filter(Source.id == str(source_id)).first()
     
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
@@ -170,7 +221,7 @@ async def trigger_source_crawl(
     
     # Initialize crawl service
     try:
-        crawl_service = CrawlService()
+        crawl_service = CrawlServiceSubprocess()
     except ValueError as e:
         raise HTTPException(
             status_code=500,
@@ -204,5 +255,31 @@ async def trigger_source_crawl(
         raise HTTPException(
             status_code=500,
             detail=f"Unexpected error triggering crawl: {str(e)}"
+        )
+
+@router.get("/{source_id}/health")
+async def get_source_health(
+    source_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Get health metrics for a specific source
+    """
+    source = db.query(Source).filter(Source.id == str(source_id)).first()
+    
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    
+    try:
+        health_service = SourceHealthService()
+        health_data = health_service.calculate_health(source, db)
+        return health_data
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error calculating health for source {source_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to calculate source health: {str(e)}"
         )
 
