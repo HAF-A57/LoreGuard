@@ -156,7 +156,7 @@ const Analytics = () => {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="aulendur-hover-transform">
+        <Card className="lgcustom-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Artifacts</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
@@ -167,7 +167,7 @@ const Analytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
+        <Card className="lgcustom-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Signal Rate</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
@@ -178,7 +178,7 @@ const Analytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform relative">
+        <Card className="lgcustom-hover-transform relative">
           <span className="placeholder-card-indicator">⭐</span>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Processing Speed</CardTitle>
@@ -190,7 +190,7 @@ const Analytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
+        <Card className="lgcustom-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Accuracy Rate</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
@@ -201,7 +201,7 @@ const Analytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
+        <Card className="lgcustom-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Sources</CardTitle>
             <Globe className="h-4 w-4 text-muted-foreground" />
@@ -212,7 +212,7 @@ const Analytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
+        <Card className="lgcustom-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg Confidence</CardTitle>
             <Award className="h-4 w-4 text-muted-foreground" />
@@ -233,7 +233,7 @@ const Analytics = () => {
         </TabsList>
 
         <TabsContent value="sources" className="space-y-6">
-          <Card className="aulendur-gradient-card">
+          <Card className="lgcustom-gradient-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <BarChart3 className="h-5 w-5" />
@@ -272,7 +272,7 @@ const Analytics = () => {
         </TabsContent>
 
         <TabsContent value="topics" className="space-y-6">
-          <Card className="aulendur-gradient-card relative">
+          <Card className="lgcustom-gradient-card relative">
             <span className="placeholder-card-indicator">⭐</span>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -306,7 +306,7 @@ const Analytics = () => {
         </TabsContent>
 
         <TabsContent value="geography" className="space-y-6">
-          <Card className="aulendur-gradient-card relative">
+          <Card className="lgcustom-gradient-card relative">
             <span className="placeholder-card-indicator">⭐</span>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -344,7 +344,7 @@ const Analytics = () => {
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">
-          <Card className="aulendur-gradient-card relative">
+          <Card className="lgcustom-gradient-card relative">
             <span className="placeholder-card-indicator">⭐</span>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">

@@ -347,7 +347,7 @@ const Jobs = () => {
             runningJobs.map((job) => (
               <Card 
                 key={job.id} 
-                className={`aulendur-hover-transform ${
+                className={`lgcustom-hover-transform ${
                   job.is_hanging ? 'border-orange-500 border-2' : ''
                 }`}
               >
@@ -488,7 +488,7 @@ const Jobs = () => {
             </Card>
           ) : (
             pendingJobs.map((job) => (
-              <Card key={job.id} className="aulendur-hover-transform">
+              <Card key={job.id} className="lgcustom-hover-transform">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -520,7 +520,7 @@ const Jobs = () => {
             </Card>
           ) : (
             completedJobs.slice(0, 50).map((job) => (
-              <Card key={job.id} className="aulendur-hover-transform">
+              <Card key={job.id} className="lgcustom-hover-transform">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -565,7 +565,7 @@ const Jobs = () => {
             </Card>
           ) : (
             failedJobs.map((job) => (
-              <Card key={job.id} className="aulendur-hover-transform border-red-200">
+              <Card key={job.id} className="lgcustom-hover-transform border-red-200">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -629,7 +629,7 @@ const Jobs = () => {
             </Card>
           ) : (
             cancelledJobs.slice(0, 50).map((job) => (
-              <Card key={job.id} className="aulendur-hover-transform">
+              <Card key={job.id} className="lgcustom-hover-transform">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">

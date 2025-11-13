@@ -3,6 +3,7 @@
  * Left sidebar containing search, filters, artifact list, and pagination
  */
 
+import { useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
@@ -46,6 +47,24 @@ const ArtifactSidebar = ({
   deleting
 }) => {
   const activeFilterCount = countActiveFilters(filters)
+  const searchInputRef = useRef(null)
+
+  // Preserve focus on search input - restore focus after artifacts update
+  useEffect(() => {
+    // Only restore focus if input was previously focused and still has value
+    if (searchInputRef.current && document.activeElement === searchInputRef.current) {
+      // Small delay to ensure DOM has updated
+      const timer = setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus()
+          // Move cursor to end of input
+          const length = searchInputRef.current.value.length
+          searchInputRef.current.setSelectionRange(length, length)
+        }
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [artifacts]) // Re-run when artifacts change
 
   return (
     <aside className="w-80 bg-sidebar border-r border-sidebar-border flex flex-col flex-shrink-0 h-full overflow-hidden">
@@ -54,6 +73,7 @@ const ArtifactSidebar = ({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-sidebar-foreground/60 dark:text-sidebar-foreground/60" />
           <Input
+            ref={searchInputRef}
             placeholder="Search artifacts..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}

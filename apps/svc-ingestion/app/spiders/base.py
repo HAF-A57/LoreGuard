@@ -61,6 +61,27 @@ class BaseLoreGuardSpider(scrapy.Spider):
         elif not hasattr(self, 'allowed_domains'):
             self.allowed_domains = []
         
+        # Auto-detect and add domains from start_urls if not explicitly configured
+        # This handles cases where allowed_domains is incomplete or missing
+        if not self.allowed_domains and self.start_urls:
+            from urllib.parse import urlparse
+            detected_domains = set()
+            for url in self.start_urls:
+                parsed = urlparse(url)
+                if parsed.netloc:
+                    # Add both with and without www prefix for better matching
+                    domain = parsed.netloc.lower()
+                    detected_domains.add(domain)
+                    # Add domain without www if it has www
+                    if domain.startswith('www.'):
+                        detected_domains.add(domain[4:])
+                    # Add domain with www if it doesn't have www
+                    elif '.' in domain:
+                        detected_domains.add(f'www.{domain}')
+            if detected_domains:
+                self.allowed_domains = list(detected_domains)
+                logger.info(f"Auto-detected allowed_domains from start_urls: {self.allowed_domains}")
+        
         # Parse config from JSON string if provided, otherwise use dict or empty dict
         config_dict = {}
         if config:
@@ -79,6 +100,23 @@ class BaseLoreGuardSpider(scrapy.Spider):
         self.extract_documents = extraction_config.get('extract_documents', True)
         self.allowed_document_types = extraction_config.get('allowed_document_types', ['pdf', 'docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls'])
         self.max_document_size_mb = extraction_config.get('max_document_size_mb', 50)
+        
+        # Extract compliance configuration
+        compliance_config = config_dict.get('compliance', {}) if config_dict else {}
+        self.compliance_config = compliance_config
+        
+        # Apply robots.txt compliance setting
+        obey_robots_txt = compliance_config.get('obey_robots_txt', True)
+        if hasattr(self, 'custom_settings'):
+            self.custom_settings['ROBOTSTXT_OBEY'] = obey_robots_txt
+        else:
+            self.custom_settings = {'ROBOTSTXT_OBEY': obey_robots_txt}
+        
+        if not obey_robots_txt:
+            logger.warning(f"[COMPLIANCE] Robots.txt compliance disabled for source {self.source_id}")
+        
+        # Initialize blocker tracking
+        self.detected_blockers = []
         
         # Statistics tracking
         self.stats = {
@@ -101,6 +139,51 @@ class BaseLoreGuardSpider(scrapy.Spider):
         logger.info(f"Initialized spider {self.name} for source {self.source_id} with {len(self.start_urls)} start URLs")
         logger.info(f"  Max depth: {self.max_depth}, Max artifacts: {self.max_artifacts if self.max_artifacts > 0 else 'unlimited'}")
         logger.info(f"  Extract PDFs: {self.extract_pdfs}, Extract Documents: {self.extract_documents}, Max size: {self.max_document_size_mb}MB")
+        logger.info(f"  Allowed domains: {self.allowed_domains}")
+        
+        # Update job with process ID when spider starts
+        if self.crawl_job_id:
+            try:
+                import os
+                import sys
+                import pathlib
+                apps_dir = pathlib.Path(__file__).resolve().parent.parent.parent.parent
+                svc_api_app_path = apps_dir / 'svc-api' / 'app'
+                if str(svc_api_app_path) not in sys.path:
+                    sys.path.insert(0, str(svc_api_app_path))
+                
+                from sqlalchemy import create_engine
+                from sqlalchemy.orm import sessionmaker
+                from models.job import Job
+                
+                database_url = os.getenv('DATABASE_URL')
+                if database_url:
+                    # Use connection pool settings
+                    engine = create_engine(
+                        database_url,
+                        pool_size=3,
+                        max_overflow=5,
+                        pool_pre_ping=True,
+                        pool_recycle=3600
+                    )
+                    Session = sessionmaker(bind=engine)
+                    session = Session()
+                    try:
+                        job = session.query(Job).filter(Job.id == self.crawl_job_id).first()
+                        if job:
+                            # Get current process ID
+                            process_id = os.getpid()
+                            if job.payload:
+                                job.payload["process_id"] = process_id
+                            else:
+                                job.payload = {"process_id": process_id}
+                            job.add_timeline_entry("running", f"Spider process started with PID {process_id}")
+                            session.commit()
+                            logger.info(f"Updated job {self.crawl_job_id} with process ID {process_id}")
+                    finally:
+                        session.close()
+            except Exception as e:
+                logger.warning(f"Failed to update job with process ID: {e}")
     
     def start_requests(self) -> Generator[Request, None, None]:
         """Generate initial requests."""
@@ -532,13 +615,27 @@ class BaseLoreGuardSpider(scrapy.Spider):
         # Extract links using the link extractor (with error handling for non-text responses)
         try:
             links = self.link_extractor.extract_links(response)
+            logger.debug(f"LinkExtractor found {len(links)} links on {response.url} (depth: {current_depth})")
         except (AttributeError, TypeError) as e:
             logger.warning(f"Cannot extract links from {response.url}: {e} (possibly binary content)")
             return
         
+        if not links:
+            logger.debug(f"No links extracted from {response.url} - checking if page has content")
+            # Log page content length for debugging
+            if hasattr(response, 'text') and response.text:
+                logger.debug(f"Page content length: {len(response.text)} chars")
+                # Check if page might be JavaScript-rendered (minimal HTML)
+                if len(response.text) < 1000:
+                    logger.warning(f"Page {response.url} has minimal content ({len(response.text)} chars) - might be JavaScript-rendered")
+        
+        followed_count = 0
+        filtered_count = 0
+        
         for link in links:
             # Apply custom link filtering
             if self.should_follow_link(link.url, response):
+                followed_count += 1
                 yield Request(
                     url=link.url,
                     callback=self.parse,
@@ -549,6 +646,13 @@ class BaseLoreGuardSpider(scrapy.Spider):
                         'link_text': link.text
                     }
                 )
+            else:
+                filtered_count += 1
+        
+        if followed_count > 0:
+            logger.info(f"Following {followed_count} links from {response.url} (filtered {filtered_count}, depth: {current_depth})")
+        elif links:
+            logger.debug(f"All {len(links)} links from {response.url} were filtered (depth: {current_depth})")
     
     def should_follow_link(self, url: str, response: Response) -> bool:
         """Determine if a link should be followed."""

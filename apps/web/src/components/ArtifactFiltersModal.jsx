@@ -4,7 +4,7 @@
  * Provides comprehensive filtering in a modal dialog
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Label } from '@/components/ui/label.jsx'
@@ -69,19 +69,31 @@ export default function ArtifactFiltersModal({
   availableAuthors = []
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  // Local state for filters - only apply when user clicks "Apply Filters"
+  const [localFilters, setLocalFilters] = useState(filters)
+
+  // Sync local filters when modal opens or external filters change
+  useEffect(() => {
+    if (open) {
+      setLocalFilters(filters)
+    }
+  }, [open, filters])
 
   const updateFilter = (key, value) => {
-    onFiltersChange({ ...filters, [key]: value })
+    // Update local state only - no API call yet
+    setLocalFilters(prev => ({ ...prev, [key]: value }))
   }
 
   const clearFilter = (key) => {
-    const newFilters = { ...filters }
+    // Update local state only
+    const newFilters = { ...localFilters }
     delete newFilters[key]
-    onFiltersChange(newFilters)
+    setLocalFilters(newFilters)
   }
 
   const clearAllFilters = () => {
-    onFiltersChange({
+    // Update local state only
+    setLocalFilters({
       label: null,
       source_id: null,
       include_deleted_sources: true,
@@ -105,8 +117,8 @@ export default function ArtifactFiltersModal({
     })
   }
 
-  const activeFilterCount = Object.keys(filters).filter(key => {
-    const value = filters[key]
+  const activeFilterCount = Object.keys(localFilters).filter(key => {
+    const value = localFilters[key]
     if (key === 'include_deleted_sources') return false // Don't count default
     if (key === 'sort_by' && value === 'created_at') return false // Don't count default
     if (key === 'sort_order' && value === 'desc') return false // Don't count default
@@ -149,7 +161,7 @@ export default function ArtifactFiltersModal({
                 ].map(option => (
                   <Button
                     key={option.value || 'all'}
-                    variant={filters.label === option.value ? "default" : "outline"}
+                    variant={localFilters.label === option.value ? "default" : "outline"}
                     size="sm"
                     onClick={() => updateFilter('label', option.value)}
                   >
@@ -165,7 +177,7 @@ export default function ArtifactFiltersModal({
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Source</Label>
               <Select 
-                value={filters.source_id || "all"} 
+                value={localFilters.source_id || "all"} 
                 onValueChange={(value) => updateFilter('source_id', value === "all" ? null : value)}
               >
                 <SelectTrigger>
@@ -186,7 +198,7 @@ export default function ArtifactFiltersModal({
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Document Type</Label>
               <Select 
-                value={filters.mime_type || "all"} 
+                value={localFilters.mime_type || "all"} 
                 onValueChange={(value) => updateFilter('mime_type', value === "all" ? null : value)}
               >
                 <SelectTrigger>
@@ -211,13 +223,13 @@ export default function ArtifactFiltersModal({
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="justify-start">
                       <CalendarIcon className="h-4 w-4 mr-2" />
-                      {filters.created_after ? format(new Date(filters.created_after), 'MMM dd, yyyy') : 'From'}
+                      {localFilters.created_after ? format(new Date(localFilters.created_after), 'MMM dd, yyyy') : 'From'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={filters.created_after ? new Date(filters.created_after) : undefined}
+                      selected={localFilters.created_after ? new Date(localFilters.created_after) : undefined}
                       onSelect={(date) => updateFilter('created_after', date ? format(date, 'yyyy-MM-dd') : null)}
                       initialFocus
                     />
@@ -227,13 +239,13 @@ export default function ArtifactFiltersModal({
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="justify-start">
                       <CalendarIcon className="h-4 w-4 mr-2" />
-                      {filters.created_before ? format(new Date(filters.created_before), 'MMM dd, yyyy') : 'To'}
+                      {localFilters.created_before ? format(new Date(localFilters.created_before), 'MMM dd, yyyy') : 'To'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={filters.created_before ? new Date(filters.created_before) : undefined}
+                      selected={localFilters.created_before ? new Date(localFilters.created_before) : undefined}
                       onSelect={(date) => updateFilter('created_before', date ? format(date, 'yyyy-MM-dd') : null)}
                       initialFocus
                     />
@@ -250,13 +262,13 @@ export default function ArtifactFiltersModal({
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="justify-start">
                       <CalendarIcon className="h-4 w-4 mr-2" />
-                      {filters.pub_date_after ? format(new Date(filters.pub_date_after), 'MMM dd, yyyy') : 'From'}
+                      {localFilters.pub_date_after ? format(new Date(localFilters.pub_date_after), 'MMM dd, yyyy') : 'From'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={filters.pub_date_after ? new Date(filters.pub_date_after) : undefined}
+                      selected={localFilters.pub_date_after ? new Date(localFilters.pub_date_after) : undefined}
                       onSelect={(date) => updateFilter('pub_date_after', date ? format(date, 'yyyy-MM-dd') : null)}
                       initialFocus
                     />
@@ -266,13 +278,13 @@ export default function ArtifactFiltersModal({
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="justify-start">
                       <CalendarIcon className="h-4 w-4 mr-2" />
-                      {filters.pub_date_before ? format(new Date(filters.pub_date_before), 'MMM dd, yyyy') : 'To'}
+                      {localFilters.pub_date_before ? format(new Date(localFilters.pub_date_before), 'MMM dd, yyyy') : 'To'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={filters.pub_date_before ? new Date(filters.pub_date_before) : undefined}
+                      selected={localFilters.pub_date_before ? new Date(localFilters.pub_date_before) : undefined}
                       onSelect={(date) => updateFilter('pub_date_before', date ? format(date, 'yyyy-MM-dd') : null)}
                       initialFocus
                     />
@@ -286,7 +298,7 @@ export default function ArtifactFiltersModal({
               <Label className="text-sm font-semibold">Sort By</Label>
               <div className="flex items-center space-x-2">
                 <Select 
-                  value={filters.sort_by || 'created_at'} 
+                  value={localFilters.sort_by || 'created_at'} 
                   onValueChange={(value) => updateFilter('sort_by', value)}
                   className="flex-1"
                 >
@@ -305,13 +317,13 @@ export default function ArtifactFiltersModal({
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const currentOrder = filters.sort_order || 'desc'
+                    const currentOrder = localFilters.sort_order || 'desc'
                     const newOrder = currentOrder === 'desc' ? 'asc' : 'desc'
                     updateFilter('sort_order', newOrder)
                   }}
                   className="w-10 p-0"
                 >
-                  {filters.sort_order === 'asc' ? (
+                  {localFilters.sort_order === 'asc' ? (
                     <SortAsc className="h-4 w-4" />
                   ) : (
                     <SortDesc className="h-4 w-4" />
@@ -342,7 +354,7 @@ export default function ArtifactFiltersModal({
                     <Label>Organization</Label>
                     <Input
                       placeholder="Filter by organization..."
-                      value={filters.organization || ''}
+                      value={localFilters.organization || ''}
                       onChange={(e) => updateFilter('organization', e.target.value || null)}
                     />
                   </div>
@@ -351,7 +363,7 @@ export default function ArtifactFiltersModal({
                   <div className="space-y-2">
                     <Label>Language</Label>
                     <Select 
-                      value={filters.language || "all"} 
+                      value={localFilters.language || "all"} 
                       onValueChange={(value) => updateFilter('language', value === "all" ? null : value)}
                     >
                       <SelectTrigger>
@@ -373,7 +385,7 @@ export default function ArtifactFiltersModal({
                     <Label>Topic</Label>
                     <Input
                       placeholder="Filter by topic..."
-                      value={filters.topic || ''}
+                      value={localFilters.topic || ''}
                       onChange={(e) => updateFilter('topic', e.target.value || null)}
                     />
                   </div>
@@ -383,7 +395,7 @@ export default function ArtifactFiltersModal({
                     <Label>Geographic Location</Label>
                     <Input
                       placeholder="Filter by location..."
-                      value={filters.geo_location || ''}
+                      value={localFilters.geo_location || ''}
                       onChange={(e) => updateFilter('geo_location', e.target.value || null)}
                     />
                   </div>
@@ -393,7 +405,7 @@ export default function ArtifactFiltersModal({
                     <Label>Author</Label>
                     <Input
                       placeholder="Filter by author..."
-                      value={filters.author || ''}
+                      value={localFilters.author || ''}
                       onChange={(e) => updateFilter('author', e.target.value || null)}
                     />
                   </div>
@@ -401,7 +413,7 @@ export default function ArtifactFiltersModal({
                   {/* Confidence Range */}
                   <div className="space-y-2">
                     <Label>
-                      Confidence Score: {filters.min_confidence !== undefined ? Math.round(filters.min_confidence * 100) : 0}% - {filters.max_confidence !== undefined ? Math.round(filters.max_confidence * 100) : 100}%
+                      Confidence Score: {localFilters.min_confidence !== undefined ? Math.round(localFilters.min_confidence * 100) : 0}% - {localFilters.max_confidence !== undefined ? Math.round(localFilters.max_confidence * 100) : 100}%
                     </Label>
                     <div className="grid grid-cols-2 gap-2">
                       <Input
@@ -409,7 +421,7 @@ export default function ArtifactFiltersModal({
                         min="0"
                         max="100"
                         placeholder="Min %"
-                        value={filters.min_confidence !== undefined ? Math.round(filters.min_confidence * 100) : ''}
+                        value={localFilters.min_confidence !== undefined ? Math.round(localFilters.min_confidence * 100) : ''}
                         onChange={(e) => {
                           const value = e.target.value ? parseFloat(e.target.value) / 100 : null
                           updateFilter('min_confidence', value)
@@ -420,7 +432,7 @@ export default function ArtifactFiltersModal({
                         min="0"
                         max="100"
                         placeholder="Max %"
-                        value={filters.max_confidence !== undefined ? Math.round(filters.max_confidence * 100) : ''}
+                        value={localFilters.max_confidence !== undefined ? Math.round(localFilters.max_confidence * 100) : ''}
                         onChange={(e) => {
                           const value = e.target.value ? parseFloat(e.target.value) / 100 : null
                           updateFilter('max_confidence', value)
@@ -433,7 +445,7 @@ export default function ArtifactFiltersModal({
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="has-normalized"
-                      checked={filters.has_normalized === true}
+                      checked={localFilters.has_normalized === true}
                       onCheckedChange={(checked) => updateFilter('has_normalized', checked === true ? true : null)}
                     />
                     <Label htmlFor="has-normalized" className="cursor-pointer">
@@ -445,7 +457,7 @@ export default function ArtifactFiltersModal({
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="include-deleted-sources"
-                      checked={filters.include_deleted_sources !== false}
+                      checked={localFilters.include_deleted_sources !== false}
                       onCheckedChange={(checked) => updateFilter('include_deleted_sources', checked === true)}
                     />
                     <Label htmlFor="include-deleted-sources" className="cursor-pointer">
@@ -461,45 +473,45 @@ export default function ArtifactFiltersModal({
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">Active Filters</Label>
                 <div className="flex flex-wrap gap-2">
-                  {filters.label && filters.label !== 'not_evaluated' && (
+                  {localFilters.label && localFilters.label !== 'not_evaluated' && (
                     <Badge variant="secondary" className="flex items-center gap-1">
-                      {filters.label}
+                      {localFilters.label}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => clearFilter('label')} />
                     </Badge>
                   )}
-                  {filters.label === 'not_evaluated' && (
+                  {localFilters.label === 'not_evaluated' && (
                     <Badge variant="secondary" className="flex items-center gap-1">
                       Not Evaluated
                       <X className="h-3 w-3 cursor-pointer" onClick={() => clearFilter('label')} />
                     </Badge>
                   )}
-                  {filters.mime_type && (
+                  {localFilters.mime_type && (
                     <Badge variant="secondary" className="flex items-center gap-1">
-                      {DOCUMENT_TYPES.find(t => t.value === filters.mime_type)?.label || filters.mime_type}
+                      {DOCUMENT_TYPES.find(t => t.value === localFilters.mime_type)?.label || localFilters.mime_type}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => clearFilter('mime_type')} />
                     </Badge>
                   )}
-                  {filters.source_id && (
+                  {localFilters.source_id && (
                     <Badge variant="secondary" className="flex items-center gap-1">
-                      Source: {sources.find(s => s.id === filters.source_id)?.name || filters.source_id.substring(0, 8)}
+                      Source: {sources.find(s => s.id === localFilters.source_id)?.name || localFilters.source_id.substring(0, 8)}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => clearFilter('source_id')} />
                     </Badge>
                   )}
-                  {filters.organization && (
+                  {localFilters.organization && (
                     <Badge variant="secondary" className="flex items-center gap-1">
-                      Org: {filters.organization.substring(0, 15)}
+                      Org: {localFilters.organization.substring(0, 15)}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => clearFilter('organization')} />
                     </Badge>
                   )}
-                  {filters.created_after && (
+                  {localFilters.created_after && (
                     <Badge variant="secondary" className="flex items-center gap-1">
-                      From: {format(new Date(filters.created_after), 'MMM dd')}
+                      From: {format(new Date(localFilters.created_after), 'MMM dd')}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => clearFilter('created_after')} />
                     </Badge>
                   )}
-                  {filters.created_before && (
+                  {localFilters.created_before && (
                     <Badge variant="secondary" className="flex items-center gap-1">
-                      To: {format(new Date(filters.created_before), 'MMM dd')}
+                      To: {format(new Date(localFilters.created_before), 'MMM dd')}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => clearFilter('created_before')} />
                     </Badge>
                   )}
@@ -515,7 +527,12 @@ export default function ArtifactFiltersModal({
           <Button variant="outline" onClick={clearAllFilters} disabled={activeFilterCount === 0}>
             Clear All
           </Button>
-          <Button onClick={() => onOpenChange(false)}>
+          <Button onClick={() => {
+            // Apply local filters to parent component
+            onFiltersChange(localFilters)
+            // Close modal
+            onOpenChange(false)
+          }}>
             Apply Filters
           </Button>
         </DialogFooter>

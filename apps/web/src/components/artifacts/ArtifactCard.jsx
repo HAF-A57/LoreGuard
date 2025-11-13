@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { getArtifactType } from '@/lib/artifacts/utils.js'
+import { useArtifactProcessingStatus } from '@/lib/artifacts/hooks/useArtifactProcessingStatus.js'
 
 const ArtifactCard = ({
   artifact,
@@ -34,6 +35,12 @@ const ArtifactCard = ({
   onDelete,
   onCardClick
 }) => {
+  // Track processing status for this artifact
+  const { isProcessing, currentStage, statusBadge } = useArtifactProcessingStatus(
+    artifact.id,
+    true, // enabled
+    3000 // poll every 3 seconds
+  )
   const hasEvaluation = artifact.label !== null
   const confidence = artifact.confidence ? parseFloat(artifact.confidence) : 0
   const artifactType = getArtifactType(artifact.mime_type, artifact.uri)
@@ -57,12 +64,12 @@ const ArtifactCard = ({
       className="w-full box-border overflow-hidden"
     >
       <Card
-        className={`cursor-pointer aulendur-hover-transform transition-all gap-0 py-0 w-full max-w-full min-w-0 box-border overflow-hidden ${
+        className={`cursor-pointer lgcustom-hover-transform transition-all gap-0 py-0 w-full max-w-full min-w-0 box-border overflow-hidden ${
           isActiveArtifact ? 'ring-2 ring-primary' : ''
         } ${isSelected ? 'ring-2 ring-primary/50' : ''} ${
-          isEvaluating ? 'opacity-75' : ''
+          isEvaluating || isProcessing ? 'opacity-75' : ''
         }`}
-        onClick={onCardClick}
+        onClick={isProcessing ? undefined : onCardClick}
       >
         <CardHeader className="pb-2 pl-3 pr-4 pt-2.5 w-full max-w-full min-w-0 overflow-hidden box-border">
           <div className="flex items-start justify-between gap-2 w-full max-w-full box-border min-w-0 overflow-hidden">
@@ -83,6 +90,24 @@ const ArtifactCard = ({
                 <IconComponent className="h-2.5 w-2.5 shrink-0" />
                 <span className="truncate text-[10px]">{artifactType.label}</span>
               </Badge>
+              
+              {/* Processing Status Badge */}
+              {statusBadge && isProcessing && (
+                <Badge 
+                  className={`text-xs shrink-0 px-1.5 py-0 flex items-center gap-0.5 whitespace-nowrap max-w-[5rem] ${
+                    statusBadge.variant === 'default' 
+                      ? 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30' 
+                      : statusBadge.variant === 'destructive'
+                      ? 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30'
+                      : 'bg-muted text-muted-foreground border-border'
+                  }`}
+                  variant="outline"
+                  title={`Processing: ${statusBadge.label}`}
+                >
+                  {statusBadge.spinning && <Loader2 className="h-2.5 w-2.5 shrink-0 animate-spin" />}
+                  <span className="truncate text-[10px]">{statusBadge.label}</span>
+                </Badge>
+              )}
               
               {/* Evaluation Status Badge */}
               {hasEvaluation ? (
@@ -109,7 +134,7 @@ const ArtifactCard = ({
             
             {/* Action Buttons */}
             <div className="flex items-center shrink-0 gap-1 flex-nowrap" style={{ minWidth: '50px' }}>
-              {isEvaluating ? (
+              {isEvaluating || isProcessing ? (
                 <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />
               ) : canEvaluate ? (
                 <Button
@@ -120,6 +145,7 @@ const ArtifactCard = ({
                     e.stopPropagation()
                     onEvaluate(artifact)
                   }}
+                  disabled={isProcessing}
                   title="Evaluate Now"
                 >
                   <PlayCircle className="h-3 w-3 text-primary" />
@@ -133,7 +159,8 @@ const ArtifactCard = ({
                   e.stopPropagation()
                   onDelete(artifact.id)
                 }}
-                disabled={isEvaluating}
+                disabled={isEvaluating || isProcessing}
+                title={isProcessing ? 'Cannot delete while processing' : 'Delete artifact'}
               >
                 <Trash2 className="h-3 w-3 !text-red-500 dark:!text-red-400" />
               </Button>

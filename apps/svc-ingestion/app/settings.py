@@ -50,14 +50,19 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 2
 # Configure timeouts
 DOWNLOAD_TIMEOUT = 30
 RETRY_TIMES = 3
-RETRY_HTTP_CODES = [500, 502, 503, 504, 408, 429]
+RETRY_HTTP_CODES = [500, 502, 503, 504, 408, 429, 403]  # Include 403 for retry handling
+
+# Allow certain HTTP error codes to pass through (not ignored by HttpErrorMiddleware)
+# This allows blocker detection and retry middleware to handle them
+HTTPERROR_ALLOWED_CODES = [403, 429]  # Allow 403 and 429 to be processed by middleware
 
 # =============================================================================
 # USER AGENT AND HEADERS
 # =============================================================================
 
 # Default user agent (will be overridden by middleware)
-USER_AGENT = 'LoreGuard-Bot/1.0 (+https://github.com/HAF-A57/LoreGuard)'
+# Realistic browser User-Agent as fallback
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 # Default request headers
 DEFAULT_REQUEST_HEADERS = {
@@ -83,14 +88,18 @@ SPIDER_MIDDLEWARES = {
 # Enable or disable downloader middlewares
 DOWNLOADER_MIDDLEWARES = {
     # Built-in middlewares
-    'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-    'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,
+    'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,  # Disable default, use custom
+    'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,  # Disable default, use custom
+    'scrapy.downloadermiddlewares.httperror.HttpErrorMiddleware': None,  # Disable default - we handle errors in custom middleware
     
-    # Custom middlewares (disabled for testing)
-    # 'app.middlewares.RotatingUserAgentMiddleware': 400,
-    # 'app.middlewares.ProxyRotationMiddleware': 410,
-    # 'app.middlewares.AntiDetectionMiddleware': 420,
-    # 'app.middlewares.CustomRetryMiddleware': 550,
+    # Custom middlewares - Enabled for production use
+    'app.middlewares.RotatingUserAgentMiddleware': 400,
+    'app.middlewares.AntiDetectionMiddleware': 420,
+    'app.middlewares.BlockerDetectionMiddleware': 430,  # After AntiDetection, before retry
+    'app.middlewares.CustomRetryMiddleware': 550,
+    
+    # Optional middlewares (enable as needed)
+    # 'app.middlewares.ProxyRotationMiddleware': 410,  # Enable when proxy config provided
     # 'app.middlewares.ResponseValidationMiddleware': 560,
 }
 

@@ -18,23 +18,23 @@ const NotFound = ({ onNavigateHome, onNavigateBack }) => {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-aulendur-cream via-aulendur-sage to-aulendur-steel flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-lgcustom-cream via-lgcustom-sage to-lgcustom-steel flex items-center justify-center p-6">
       <div className="w-full max-w-2xl text-center">
         {/* Error Illustration */}
         <div className="mb-8">
-          <div className="w-32 h-32 bg-aulendur-navy/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertTriangle className="h-16 w-16 text-aulendur-navy" />
+          <div className="w-32 h-32 bg-lgcustom-navy/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertTriangle className="h-16 w-16 text-lgcustom-navy" />
           </div>
-          <div className="text-8xl font-bold text-aulendur-navy/20 mb-4">404</div>
-          <h1 className="text-4xl font-bold text-aulendur-navy mb-2">Page Not Found</h1>
-          <p className="text-lg text-aulendur-steel mb-8">
+          <div className="text-8xl font-bold text-lgcustom-navy/20 mb-4">404</div>
+          <h1 className="text-4xl font-bold text-lgcustom-navy mb-2">Page Not Found</h1>
+          <p className="text-lg text-lgcustom-steel mb-8">
             The page you're looking for doesn't exist or has been moved.
           </p>
         </div>
 
         {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card className="aulendur-gradient-card aulendur-hover-transform">
+          <Card className="lgcustom-gradient-card lgcustom-hover-transform">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <ArrowLeft className="h-5 w-5" />
@@ -54,7 +54,7 @@ const NotFound = ({ onNavigateHome, onNavigateBack }) => {
             </CardContent>
           </Card>
 
-          <Card className="aulendur-gradient-card aulendur-hover-transform">
+          <Card className="lgcustom-gradient-card lgcustom-hover-transform">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Home className="h-5 w-5" />
@@ -75,7 +75,7 @@ const NotFound = ({ onNavigateHome, onNavigateBack }) => {
         </div>
 
         {/* Quick Links */}
-        <Card className="aulendur-gradient-card">
+        <Card className="lgcustom-gradient-card">
           <CardHeader>
             <CardTitle>Quick Navigation</CardTitle>
             <CardDescription>Jump to commonly used sections</CardDescription>
@@ -88,7 +88,7 @@ const NotFound = ({ onNavigateHome, onNavigateBack }) => {
                   <Button
                     key={index}
                     variant="ghost"
-                    className="flex flex-col items-center space-y-2 h-auto py-4 aulendur-hover-transform"
+                    className="flex flex-col items-center space-y-2 h-auto py-4 lgcustom-hover-transform"
                     onClick={link.action}
                   >
                     <Icon className="h-6 w-6" />
@@ -101,7 +101,7 @@ const NotFound = ({ onNavigateHome, onNavigateBack }) => {
         </Card>
 
         {/* Help Section */}
-        <div className="mt-8 text-sm text-aulendur-steel">
+        <div className="mt-8 text-sm text-lgcustom-steel">
           <p className="mb-2">Still need help? Contact support or check our user guide.</p>
           <div className="flex items-center justify-center space-x-4">
             <Button variant="link" className="p-0 h-auto">
@@ -121,15 +121,15 @@ const NotFound = ({ onNavigateHome, onNavigateBack }) => {
         {/* Footer */}
         <div className="mt-12 text-center">
           <div className="flex items-center justify-center space-x-3 mb-4">
-            <div className="w-8 h-8 bg-aulendur-navy rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-lgcustom-navy rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">LG</span>
             </div>
             <div>
-              <div className="text-lg font-bold text-aulendur-navy">LoreGuard</div>
-              <div className="text-xs text-aulendur-steel">Facts & Perspectives Harvesting</div>
+              <div className="text-lg font-bold text-lgcustom-navy">LoreGuard</div>
+              <div className="text-xs text-lgcustom-steel">Facts & Perspectives Harvesting</div>
             </div>
           </div>
-          <p className="text-xs text-aulendur-steel">© 2024 Air Force Wargaming. All rights reserved.</p>
+          <p className="text-xs text-lgcustom-steel">© 2024 Air Force Wargaming. All rights reserved.</p>
         </div>
       </div>
     </div>

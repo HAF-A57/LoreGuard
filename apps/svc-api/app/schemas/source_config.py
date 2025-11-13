@@ -116,9 +116,53 @@ class RetryConfig(BaseModel):
 
 
 class ComplianceConfig(BaseModel):
-    """Compliance and robots.txt configuration"""
-    obey_robots_txt: bool = Field(default=True, description="Respect robots.txt directives")
-    robots_txt_user_agent: str = Field(default="*", description="User-Agent for robots.txt check")
+    """Compliance and blocker handling configuration"""
+    # Robots.txt settings
+    obey_robots_txt: bool = Field(default=True, description="Respect robots.txt directives (recommended)")
+    robots_txt_user_agent: str = Field(default="*", description="User-Agent string for robots.txt check")
+    robots_txt_warning_only: bool = Field(default=False, description="Warn but don't block when robots.txt disallows")
+    
+    # Blocker detection
+    detect_blockers: bool = Field(default=True, description="Automatically detect common blockers (Cloudflare, CAPTCHA, etc.)")
+    notify_on_blocker: bool = Field(default=True, description="Notify admin when blocker detected")
+    
+    # Blocker response strategies
+    blocker_response_strategy: Literal["abort", "retry", "bypass", "notify"] = Field(
+        default="notify",
+        description="Default response when blocker detected: abort (stop), retry (retry with different approach), bypass (attempt bypass), notify (notify and wait)"
+    )
+    
+    # Per-blocker-type handling
+    handle_403: Literal["abort", "retry", "bypass", "notify"] = Field(
+        default="retry",
+        description="Response to 403 Forbidden errors"
+    )
+    handle_429: Literal["abort", "retry", "bypass", "notify"] = Field(
+        default="retry",
+        description="Response to 429 Rate Limited errors"
+    )
+    handle_cloudflare: Literal["abort", "bypass", "notify"] = Field(
+        default="notify",
+        description="Response to Cloudflare challenge pages"
+    )
+    handle_captcha: Literal["abort", "notify", "pause"] = Field(
+        default="pause",
+        description="Response to CAPTCHA challenges"
+    )
+    
+    # Bypass options
+    allow_proxy_bypass: bool = Field(
+        default=False,
+        description="Allow proxy rotation to bypass IP blocks (may violate ToS)"
+    )
+    allow_browser_bypass: bool = Field(
+        default=False,
+        description="Allow headless browser to bypass JavaScript challenges (may violate ToS)"
+    )
+    allow_user_agent_rotation: bool = Field(
+        default=True,
+        description="Allow User-Agent rotation to avoid detection"
+    )
 
 
 class RSSConfig(BaseModel):

@@ -28,6 +28,7 @@ import RubricDetailModal from './RubricDetailModal.jsx'
 import RubricFormModal from './RubricFormModal.jsx'
 import RubricNarrativeModal from './RubricNarrativeModal.jsx'
 import PromptTemplates from './PromptTemplates.jsx'
+import RubricCategoryGrid from './rubrics/RubricCategoryGrid.jsx'
 
 const Evaluations = () => {
   // Component for managing evaluations and rubrics
@@ -40,6 +41,7 @@ const Evaluations = () => {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [narrativeRubricId, setNarrativeRubricId] = useState(null)
   const [isNarrativeModalOpen, setIsNarrativeModalOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
   const [evaluationStats, setEvaluationStats] = useState({
     total: 0,
     signal: 0,
@@ -51,6 +53,32 @@ const Evaluations = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Reusable function to fetch rubrics with full details (including categories)
+  const fetchRubricsWithDetails = async () => {
+    const rubricsResponse = await fetch(`${API_URL}/api/v1/rubrics/`)
+    if (!rubricsResponse.ok) throw new Error('Failed to fetch rubrics')
+    const rubricsData = await rubricsResponse.json()
+    const rubricList = rubricsData.items || []
+    
+    // Fetch full details for each rubric to get categories
+    const rubricsWithDetails = await Promise.all(
+      rubricList.map(async (rubric) => {
+        try {
+          const detailResponse = await fetch(`${API_URL}/api/v1/rubrics/${rubric.id}`)
+          if (detailResponse.ok) {
+            return await detailResponse.json()
+          }
+          return rubric // Fallback to list item if detail fetch fails
+        } catch (err) {
+          console.warn(`Failed to fetch details for rubric ${rubric.id}:`, err)
+          return rubric // Fallback to list item
+        }
+      })
+    )
+    
+    return rubricsWithDetails
+  }
+
   // Fetch rubrics and active rubric
   useEffect(() => {
     const fetchRubrics = async () => {
@@ -58,11 +86,8 @@ const Evaluations = () => {
         setLoading(true)
         setError(null)
 
-        // Fetch all rubrics
-        const rubricsResponse = await fetch(`${API_URL}/api/v1/rubrics/`)
-        if (!rubricsResponse.ok) throw new Error('Failed to fetch rubrics')
-        const rubricsData = await rubricsResponse.json()
-        setRubrics(rubricsData.items || [])
+        const rubricsWithDetails = await fetchRubricsWithDetails()
+        setRubrics(rubricsWithDetails)
 
         // Fetch active rubric
         try {
@@ -161,10 +186,9 @@ const Evaluations = () => {
       if (!response.ok) throw new Error('Failed to activate rubric')
       const updated = await response.json()
       setActiveRubric(updated)
-      // Refresh rubrics list
-      const rubricsResponse = await fetch(`${API_URL}/api/v1/rubrics/`)
-      const rubricsData = await rubricsResponse.json()
-      setRubrics(rubricsData.items || [])
+      // Refresh rubrics list with full details (including categories)
+      const rubricsWithDetails = await fetchRubricsWithDetails()
+      setRubrics(rubricsWithDetails)
     } catch (err) {
       console.error('Error activating rubric:', err)
       alert('Failed to activate rubric: ' + err.message)
@@ -180,10 +204,23 @@ const Evaluations = () => {
         method: 'DELETE'
       })
       if (!response.ok) throw new Error('Failed to delete rubric')
-      // Refresh rubrics list
-      const rubricsResponse = await fetch(`${API_URL}/api/v1/rubrics/`)
-      const rubricsData = await rubricsResponse.json()
-      setRubrics(rubricsData.items || [])
+      // Refresh rubrics list with full details (including categories)
+      const rubricsWithDetails = await fetchRubricsWithDetails()
+      setRubrics(rubricsWithDetails)
+      
+      // Refresh active rubric if the deleted one was active
+      try {
+        const activeResponse = await fetch(`${API_URL}/api/v1/rubrics/active`)
+        if (activeResponse.ok) {
+          const activeData = await activeResponse.json()
+          setActiveRubric(activeData)
+        } else {
+          setActiveRubric(null)
+        }
+      } catch (err) {
+        console.warn('No active rubric found:', err)
+        setActiveRubric(null)
+      }
     } catch (err) {
       console.error('Error deleting rubric:', err)
       alert('Failed to delete rubric: ' + err.message)
@@ -201,13 +238,10 @@ const Evaluations = () => {
   }
 
   const handleFormSuccess = async () => {
-    // Refresh rubrics list
+    // Refresh rubrics list with full details (including categories)
     try {
-      const response = await fetch(`${API_URL}/api/v1/rubrics/`)
-      if (response.ok) {
-        const data = await response.json()
-        setRubrics(data.items || [])
-      }
+      const rubricsWithDetails = await fetchRubricsWithDetails()
+      setRubrics(rubricsWithDetails)
       
       // Refresh active rubric
       try {
@@ -312,15 +346,27 @@ const Evaluations = () => {
             <Settings className="h-4 w-4 mr-2" />
             Configure Models
           </Button>
-          <Button size="sm" onClick={handleNewRubric}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Rubric
-          </Button>
+          {activeTab === 'rubrics' && (
+            <Button size="sm" onClick={handleNewRubric}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Rubric
+            </Button>
+          )}
+          {activeTab === 'meta-prompts' && (
+            <Button size="sm" onClick={() => {
+              // Trigger add template in PromptTemplates component
+              const event = new CustomEvent('promptTemplates:addTemplate')
+              window.dispatchEvent(event)
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Meta-Prompt Template
+            </Button>
+          )}
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-2">
+        <TabsList className="grid w-full grid-cols-4 gap-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="rubrics">Rubrics</TabsTrigger>
           <TabsTrigger value="meta-prompts">Meta-Prompts</TabsTrigger>
@@ -330,7 +376,7 @@ const Evaluations = () => {
         <TabsContent value="overview" className="space-y-6">
           {/* Current Rubric Status */}
           {activeRubricData ? (
-            <Card className="aulendur-gradient-card">
+            <Card className="lgcustom-gradient-card">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Target className="h-5 w-5" />
@@ -345,7 +391,10 @@ const Evaluations = () => {
                     <p className="text-sm text-muted-foreground">Version {activeRubricData.version}</p>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <Badge variant="default" className="bg-green-500">
+                    <Badge 
+                      variant="outline"
+                      className="bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/50 font-semibold px-2.5 py-0.5"
+                    >
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Active
                     </Badge>
@@ -360,29 +409,12 @@ const Evaluations = () => {
                   </div>
                 </div>
                 {categories.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                      {categories.map(([key, category]) => (
-                        <div 
-                          key={key} 
-                          className="text-center p-3 rounded-lg bg-background/50 hover:bg-background/70 cursor-pointer transition-colors"
-                          onClick={() => handleViewRubricDetails(activeRubricData.id)}
-                          title={`Click to view details about ${formatCategoryName(key)}`}
-                        >
-                          <div className="text-lg font-bold">{getCategoryWeight(category)}%</div>
-                          <div className="text-xs text-muted-foreground">{formatCategoryName(key)}</div>
-                          {category.guidance && (
-                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {category.guidance}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="text-xs text-muted-foreground text-center pt-2">
-                      Click any category to view full rubric details
-                    </div>
-                  </div>
+                  <RubricCategoryGrid
+                    categories={categories}
+                    onCategoryClick={() => handleViewRubricDetails(activeRubricData.id)}
+                    formatCategoryName={formatCategoryName}
+                    getCategoryWeight={getCategoryWeight}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -397,7 +429,7 @@ const Evaluations = () => {
 
           {/* Today's Evaluation Summary */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card className="aulendur-hover-transform">
+            <Card className="lgcustom-hover-transform">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Artifacts Evaluated</CardTitle>
                 <Brain className="h-4 w-4 text-muted-foreground" />
@@ -410,7 +442,7 @@ const Evaluations = () => {
               </CardContent>
             </Card>
 
-            <Card className="aulendur-hover-transform">
+            <Card className="lgcustom-hover-transform">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Signal Identified</CardTitle>
                 <Zap className="h-4 w-4 text-muted-foreground" />
@@ -425,7 +457,7 @@ const Evaluations = () => {
               </CardContent>
             </Card>
 
-            <Card className="aulendur-hover-transform">
+            <Card className="lgcustom-hover-transform">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Avg Confidence</CardTitle>
                 <Award className="h-4 w-4 text-muted-foreground" />
@@ -436,7 +468,7 @@ const Evaluations = () => {
               </CardContent>
             </Card>
 
-            <Card className="aulendur-hover-transform">
+            <Card className="lgcustom-hover-transform">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Review Items</CardTitle>
                 <Clock className="h-4 w-4 text-muted-foreground" />
@@ -467,19 +499,37 @@ const Evaluations = () => {
             <div className="grid gap-6">
               {rubrics.map((rubric) => {
                 // Handle categories as array or object
-                const rubricCategories = rubric.categories 
-                  ? (Array.isArray(rubric.categories)
-                      ? rubric.categories.map((cat, idx) => [cat.id || `category_${idx}`, cat])
-                      : Object.entries(rubric.categories))
-                  : []
+                let rubricCategories = []
+                if (rubric.categories) {
+                  if (Array.isArray(rubric.categories)) {
+                    rubricCategories = rubric.categories.map((cat, idx) => {
+                      // Handle both object format and direct category format
+                      if (typeof cat === 'object' && cat !== null) {
+                        return [cat.id || `category_${idx}`, cat]
+                      }
+                      return [`category_${idx}`, { weight: 0, guidance: '' }]
+                    })
+                  } else if (typeof rubric.categories === 'object' && rubric.categories !== null) {
+                    rubricCategories = Object.entries(rubric.categories)
+                  }
+                }
+                
+                
                 return (
-                  <Card key={rubric.id || rubric.version} className="aulendur-hover-transform">
+                  <Card key={rubric.id || rubric.version} className="lgcustom-hover-transform">
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
                           <CardTitle className="flex items-center space-x-2">
                             <span>Rubric {rubric.version}</span>
-                            <Badge variant={rubric.is_active ? 'default' : 'secondary'}>
+                            <Badge 
+                              variant="outline"
+                              className={
+                                rubric.is_active 
+                                  ? 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/50 font-semibold px-2.5 py-0.5' 
+                                  : 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/50 font-semibold px-2.5 py-0.5'
+                              }
+                            >
                               {rubric.is_active ? 'Active' : 'Inactive'}
                             </Badge>
                           </CardTitle>
@@ -536,25 +586,19 @@ const Evaluations = () => {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      {rubricCategories.length > 0 && (
+                      {rubricCategories.length > 0 ? (
                         <div className="space-y-3">
-                          <h4 className="font-semibold text-sm">Evaluation Categories</h4>
-                          <div className="grid gap-3">
-                            {rubricCategories.map(([key, category]) => (
-                              <div key={key} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                                <div>
-                                  <div className="font-medium text-sm">{formatCategoryName(key)}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {category.guidance || 'No description'}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-bold">{getCategoryWeight(category)}%</div>
-                                  <div className="text-xs text-muted-foreground">Weight</div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                          <h4 className="font-semibold text-sm mb-3">Evaluation Categories</h4>
+                          <RubricCategoryGrid
+                            categories={rubricCategories}
+                            onCategoryClick={() => handleViewRubricDetails(rubric.id)}
+                            formatCategoryName={formatCategoryName}
+                            getCategoryWeight={getCategoryWeight}
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground py-2">
+                          No categories defined for this rubric
                         </div>
                       )}
                     </CardContent>
@@ -565,12 +609,12 @@ const Evaluations = () => {
           )}
         </TabsContent>
 
-        <TabsContent value="meta-prompts" className="space-y-6">
+        <TabsContent value="meta-prompts" className="mt-2">
           <PromptTemplates />
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-6">
-          <Card className="aulendur-gradient-card">
+          <Card className="lgcustom-gradient-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <BarChart3 className="h-5 w-5" />

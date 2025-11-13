@@ -460,6 +460,106 @@ async def get_normalized_content(
             detail=f"Failed to fetch normalized content: {str(e)}"
         )
 
+@router.get("/{artifact_id}/processing-status")
+async def get_artifact_processing_status(
+    artifact_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Get processing status for an artifact
+    
+    Returns the latest normalize and evaluate job statuses for this artifact,
+    including real-time progress and timeline information.
+    """
+    from services.job_monitoring_service import JobMonitoringService
+    
+    artifact_id_str = str(artifact_id)
+    monitoring_service = JobMonitoringService()
+    
+    # Get artifact to check normalization status
+    artifact = db.query(Artifact).filter(Artifact.id == artifact_id_str).first()
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    
+    # Get all normalize and evaluate jobs (normalize jobs may not exist if using Celery)
+    normalize_jobs = (
+        db.query(Job)
+        .filter(Job.type == "normalize")
+        .order_by(Job.created_at.desc())
+        .all()
+    )
+    
+    evaluate_jobs = (
+        db.query(Job)
+        .filter(Job.type == "evaluate")
+        .order_by(Job.created_at.desc())
+        .all()
+    )
+    
+    # Find latest jobs for this artifact
+    latest_normalize = None
+    latest_evaluate = None
+    
+    for job in normalize_jobs:
+        if job.payload and job.payload.get("artifact_id") == artifact_id_str:
+            latest_normalize = job
+            break
+    
+    for job in evaluate_jobs:
+        if job.payload and job.payload.get("artifact_id") == artifact_id_str:
+            latest_evaluate = job
+            break
+    
+    # Get comprehensive status for each job
+    normalize_status = None
+    evaluate_status = None
+    
+    if latest_normalize:
+        normalize_status = monitoring_service.check_job_status(latest_normalize, db)
+    
+    if latest_evaluate:
+        evaluate_status = monitoring_service.check_job_status(latest_evaluate, db)
+    
+    # Determine overall processing state
+    # Note: Normalization may not create jobs (uses Celery), so check artifact.normalized_ref
+    is_processing = False
+    current_stage = None
+    
+    # Check if normalization is in progress (via job) or completed (via artifact.normalized_ref)
+    if latest_normalize and latest_normalize.status in ["pending", "running"]:
+        is_processing = True
+        current_stage = "normalizing"
+    elif artifact.normalized_ref:
+        # Normalization completed (check via artifact field)
+        if latest_evaluate:
+            if latest_evaluate.status in ["pending", "running"]:
+                is_processing = True
+                current_stage = "evaluating"
+            elif latest_evaluate.status == "completed":
+                current_stage = "completed"
+            elif latest_evaluate.status == "failed":
+                current_stage = "evaluation_failed"
+            else:
+                current_stage = "normalized"
+        else:
+            current_stage = "normalized"
+    elif latest_normalize and latest_normalize.status == "failed":
+        current_stage = "normalization_failed"
+    elif latest_evaluate and latest_evaluate.status == "failed":
+        current_stage = "evaluation_failed"
+    else:
+        # No normalization job and no normalized_ref - likely pending normalization
+        current_stage = "pending"
+    
+    return {
+        "artifact_id": artifact_id_str,
+        "is_processing": is_processing,
+        "current_stage": current_stage,
+        "has_normalized_content": bool(artifact.normalized_ref),
+        "normalize_job": normalize_status,
+        "evaluate_job": evaluate_status
+    }
+
 @router.get("/{artifact_id}/evaluation-readiness")
 async def check_evaluation_readiness(
     artifact_id: uuid.UUID,

@@ -4,7 +4,7 @@
  * Refactored to use custom hooks and sub-components for better maintainability
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { API_URL } from '@/config.js'
@@ -17,6 +17,7 @@ import { useArtifactsData } from '@/lib/artifacts/hooks/useArtifactsData.js'
 import { useEvaluationJob } from '@/lib/artifacts/hooks/useEvaluationJob.js'
 import { useArtifactDeletion } from '@/lib/artifacts/hooks/useArtifactDeletion.js'
 import { useArtifactSelection } from '@/lib/artifacts/hooks/useArtifactSelection.js'
+import { useDebounce } from '@/lib/hooks/useDebounce.js'
 
 const Artifacts = () => {
   // Selected artifact state (for detail view)
@@ -30,6 +31,16 @@ const Artifacts = () => {
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState("")
+  const [localSearchQuery, setLocalSearchQuery] = useState("") // Local state for immediate UI updates
+  const debouncedSearchQuery = useDebounce(localSearchQuery, 400) // Debounced value for API calls
+  
+  // Sync debounced search query to actual search query
+  useEffect(() => {
+    setSearchQuery(debouncedSearchQuery)
+    // Reset to first page when search changes
+    setPagination(prev => ({ ...prev, currentPage: 1 }))
+  }, [debouncedSearchQuery])
+  
   const [filters, setFilters] = useState({
     label: null,
     source_id: null,
@@ -261,8 +272,8 @@ const Artifacts = () => {
     <div className="h-[calc(100vh-4rem)] flex overflow-hidden">
       {/* Sidebar with artifact list */}
       <ArtifactSidebar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        searchQuery={localSearchQuery}
+        onSearchChange={setLocalSearchQuery}
         filters={filters}
         onFiltersClick={() => setFiltersModalOpen(true)}
         onQuickFilterChange={(label) => {

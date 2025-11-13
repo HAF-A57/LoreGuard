@@ -426,16 +426,47 @@ class DocumentParserService:
             links = []
             
             for element in elements:
-                if hasattr(element, 'text'):
-                    text_parts.append(element.text)
+                # Extract text content
+                if hasattr(element, 'text') and element.text:
+                    # Filter out None and empty strings
+                    text = str(element.text).strip()
+                    if text:
+                        text_parts.append(text)
+                # Also try to get text from element directly if it's a string-like object
+                elif hasattr(element, '__str__'):
+                    text = str(element).strip()
+                    if text and len(text) > 10:  # Only include substantial text
+                        text_parts.append(text)
                 
                 # Extract links if available (ElementMetadata doesn't support .get())
                 if hasattr(element, 'metadata') and hasattr(element.metadata, 'link_urls'):
                     if element.metadata.link_urls:
                         links.extend(element.metadata.link_urls)
             
+            # If no text extracted, try fallback parsing with BeautifulSoup
+            text_content = '\n'.join(text_parts) if text_parts else ''
+            
+            if not text_content or len(text_content.strip()) < 50:
+                # Fallback to BeautifulSoup for HTML parsing
+                try:
+                    from bs4 import BeautifulSoup
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        soup = BeautifulSoup(f.read(), 'html.parser')
+                        # Remove script and style elements
+                        for script in soup(["script", "style"]):
+                            script.decompose()
+                        text_content = soup.get_text(separator='\n', strip=True)
+                        logger.info(f"Used BeautifulSoup fallback for HTML parsing, extracted {len(text_content)} chars")
+                except Exception as fallback_error:
+                    logger.warning(f"BeautifulSoup fallback also failed: {fallback_error}")
+            
+            if not text_content or len(text_content.strip()) < 10:
+                logger.warning(f"No substantial text content extracted from HTML file: {file_path}")
+                # Return minimal content to avoid complete failure
+                text_content = f"[HTML document from {file_path} - text extraction limited]"
+            
             return {
-                'text_content': '\n'.join(text_parts),
+                'text_content': text_content,
                 'metadata': {},
                 'tables': [],
                 'images': [],
@@ -443,7 +474,7 @@ class DocumentParserService:
             }
             
         except Exception as e:
-            logger.error(f"HTML parsing failed: {e}")
+            logger.error(f"HTML parsing failed: {e}", exc_info=True)
             raise
     
     async def _parse_text(self, file_path: str, options: Dict[str, Any]) -> Dict[str, Any]:

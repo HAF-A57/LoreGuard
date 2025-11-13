@@ -70,6 +70,21 @@ const SourceFormModal = ({ sourceId, open, onOpenChange, onSuccess }) => {
             extract_documents: true,
             extract_pdfs: true,
             max_document_size_mb: 50
+          },
+          compliance: {
+            obey_robots_txt: true,
+            robots_txt_user_agent: '*',
+            robots_txt_warning_only: false,
+            detect_blockers: true,
+            notify_on_blocker: true,
+            blocker_response_strategy: 'notify',
+            handle_403: 'retry',
+            handle_429: 'retry',
+            handle_cloudflare: 'notify',
+            handle_captcha: 'pause',
+            allow_proxy_bypass: false,
+            allow_browser_bypass: false,
+            allow_user_agent_rotation: true
           }
         }
       })
@@ -88,22 +103,50 @@ const SourceFormModal = ({ sourceId, open, onOpenChange, onSuccess }) => {
       }
       const source = await response.json()
       
+      // Merge config with defaults to ensure all fields are present
+      const defaultConfig = {
+        start_urls: [],
+        crawl_scope: { max_depth: 3, max_artifacts: 0 },
+        filtering: { allowed_domains: [] },
+        extraction: {
+          extract_documents: true,
+          extract_pdfs: true,
+          max_document_size_mb: 50
+        },
+        compliance: {
+          obey_robots_txt: true,
+          robots_txt_user_agent: '*',
+          robots_txt_warning_only: false,
+          detect_blockers: true,
+          notify_on_blocker: true,
+          blocker_response_strategy: 'notify',
+          handle_403: 'retry',
+          handle_429: 'retry',
+          handle_cloudflare: 'notify',
+          handle_captcha: 'pause',
+          allow_proxy_bypass: false,
+          allow_browser_bypass: false,
+          allow_user_agent_rotation: true
+        }
+      }
+      
+      const sourceConfig = source.config || {}
+      const mergedConfig = {
+        ...defaultConfig,
+        ...sourceConfig,
+        crawl_scope: { ...defaultConfig.crawl_scope, ...(sourceConfig.crawl_scope || {}) },
+        filtering: { ...defaultConfig.filtering, ...(sourceConfig.filtering || {}) },
+        extraction: { ...defaultConfig.extraction, ...(sourceConfig.extraction || {}) },
+        compliance: { ...defaultConfig.compliance, ...(sourceConfig.compliance || {}) }
+      }
+      
       setFormData({
         name: source.name || '',
         type: source.type || 'web',
         status: source.status || 'active',
         schedule: source.schedule || '',
         tags: source.tags || [],
-        config: source.config || {
-          start_urls: [],
-          crawl_scope: { max_depth: 3, max_artifacts: 0 },
-          filtering: { allowed_domains: [] },
-          extraction: {
-            extract_documents: true,
-            extract_pdfs: true,
-            max_document_size_mb: 50
-          }
-        }
+        config: mergedConfig
       })
     } catch (err) {
       console.error('Error fetching source:', err)

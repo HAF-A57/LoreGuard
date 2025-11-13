@@ -66,20 +66,20 @@ def evaluate_artifact(self, artifact_id: str, rubric_version: Optional[str] = No
             sys.path.insert(0, '/app/app')
         
         from app.services.llm_evaluation import LLMEvaluationService
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
         import asyncio
         
         logger.info(f"Starting evaluation task for artifact {artifact_id}")
         
-        # Create database session
-        database_url = os.getenv('DATABASE_URL')
-        if not database_url:
-            raise RuntimeError("DATABASE_URL not configured")
+        # Use shared database engine (API service has its own shared engine)
+        # Import API service database module
+        import sys
+        if '/app/app' not in sys.path:
+            sys.path.insert(0, '/app/app')
         
-        engine = create_engine(database_url)
-        Session = sessionmaker(bind=engine)
-        session = Session()
+        from db.database import SessionLocal
+        
+        # Create database session using shared engine
+        session = SessionLocal()
         
         try:
             # Create evaluation service
@@ -112,6 +112,7 @@ def evaluate_artifact(self, artifact_id: str, rubric_version: Optional[str] = No
                 loop.close()
         finally:
             session.close()
+            # Note: Engine is shared and persists, so we don't dispose it
             
     except ValueError as e:
         # Don't retry for not found errors

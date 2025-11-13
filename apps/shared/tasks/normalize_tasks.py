@@ -63,64 +63,6 @@ def normalize_artifact(self, artifact_id: str, processing_options: Optional[Dict
         
         logger.info(f"Starting normalization task for artifact {artifact_id}")
         
-        # Check file size if available to adjust timeout dynamically
-        # This helps with very large files that might need more time
-        try:
-            # Try to get file size from MinIO/S3 if available
-            # This is optional - if it fails, we'll proceed with default timeout
-            from app.core.config import settings
-            import boto3
-            from botocore.exceptions import ClientError
-            
-            s3_client = boto3.client(
-                's3',
-                endpoint_url=settings.S3_ENDPOINT_URL,
-                aws_access_key_id=settings.S3_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY
-            )
-            
-            # Get artifact to find content_hash
-            # Import API models - they're mounted at /app/svc-api-app in normalize container
-            import sys
-            if '/app/svc-api-app' not in sys.path:
-                sys.path.insert(0, '/app/svc-api-app')
-            
-            from sqlalchemy import create_engine
-            from sqlalchemy.orm import sessionmaker
-            from models.artifact import Artifact
-            
-            engine = create_engine(settings.DATABASE_URL)
-            Session = sessionmaker(bind=engine)
-            session = Session()
-            
-            try:
-                artifact = session.query(Artifact).filter(Artifact.id == artifact_id).first()
-                if artifact and artifact.content_hash:
-                    # Construct MinIO key
-                    content_hash = artifact.content_hash
-                    key = f"artifacts/{content_hash[:2]}/{content_hash[2:4]}/{content_hash}.bin"
-                    
-                    # Get object size
-                    try:
-                        response = s3_client.head_object(
-                            Bucket=settings.S3_BUCKET_NAME,
-                            Key=key
-                        )
-                        file_size_mb = response.get('ContentLength', 0) / (1024 * 1024)
-                        logger.info(f"Artifact {artifact_id} file size: {file_size_mb:.2f} MB")
-                        
-                        # For very large files (>50MB), log a warning but proceed
-                        # The increased timeout should handle it
-                        if file_size_mb > 50:
-                            logger.warning(f"Large file detected ({file_size_mb:.2f} MB) - may take longer to process")
-                    except ClientError:
-                        logger.debug(f"Could not determine file size for artifact {artifact_id}")
-            finally:
-                session.close()
-        except Exception as e:
-            # Don't fail if file size check fails - just log and continue
-            logger.debug(f"Could not check file size for artifact {artifact_id}: {e}")
-        
         # Create service instance
         service = DocumentProcessingService()
         
@@ -138,6 +80,7 @@ def normalize_artifact(self, artifact_id: str, processing_options: Optional[Dict
             return result
         finally:
             loop.close()
+            # Note: No cleanup needed - service uses shared engine that persists
             
     except ValueError as e:
         # Don't retry for not found errors

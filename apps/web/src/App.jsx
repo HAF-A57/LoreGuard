@@ -136,7 +136,7 @@ function App() {
   return (
     <div className={`min-h-screen bg-background ${isDarkMode ? 'dark' : ''}`}>
       {/* Header */}
-      <header className="h-16 bg-gradient-to-r from-aulendur-cream via-aulendur-sage to-aulendur-steel border-b border-border flex items-center justify-between px-6">
+      <header className="h-16 bg-gradient-to-r from-lgcustom-cream via-lgcustom-sage to-lgcustom-steel border-b border-border flex items-center justify-between px-6">
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
@@ -147,11 +147,11 @@ function App() {
             {sidebarCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
           </Button>
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-aulendur-navy rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-lgcustom-navy rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-base">LG</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-aulendur-navy tracking-wide header-title">Global Facts & Perspectives Harvesting</h1>
+              <h1 className="text-xl font-bold text-lgcustom-navy tracking-wide header-title">Global Facts & Perspectives Harvesting</h1>
             </div>
           </div>
         </div>
@@ -161,7 +161,7 @@ function App() {
             variant="ghost"
             size="sm"
             onClick={() => setAssistantCollapsed(!assistantCollapsed)}
-            className="aulendur-hover-transform"
+            className="lgcustom-hover-transform"
           >
             <MessageSquare className="h-4 w-4" />
             {!assistantCollapsed && <span className="ml-2 hidden md:inline">AI Assistant</span>}
@@ -170,18 +170,18 @@ function App() {
             variant="ghost"
             size="sm"
             onClick={toggleTheme}
-            className="aulendur-hover-transform"
+            className="lgcustom-hover-transform"
           >
             {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-          <div className="text-sm text-aulendur-steel font-medium">
+          <div className="text-sm text-lgcustom-steel font-medium">
             Air Force Wargaming
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={handleLogout}
-            className="aulendur-hover-transform"
+            className="lgcustom-hover-transform"
           >
             Logout
           </Button>
@@ -204,7 +204,7 @@ function App() {
                   />
                 </div>
               ) : (
-                <div className="w-10 h-10 bg-aulendur-navy rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-lgcustom-navy rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">LG</span>
                 </div>
               )}
@@ -221,7 +221,7 @@ function App() {
                   <li key={item.id}>
                     <Button
                       variant={isActive ? "default" : "ghost"}
-                      className={`w-full justify-start aulendur-hover-transform sidebar-nav-button ${
+                      className={`w-full justify-start lgcustom-hover-transform sidebar-nav-button ${
                         sidebarCollapsed ? 'px-2' : 'px-3'
                       } ${isActive ? 'active' : ''}`}
                       onClick={() => setCurrentPage(item.id)}

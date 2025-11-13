@@ -364,7 +364,7 @@ const Settings = () => {
     {
       id: 1,
       name: "John Smith",
-      email: "john.smith@aulendur.com",
+      email: "john.smith@lgcustom.com",
       role: "Administrator",
       status: "active",
       lastLogin: "2024-09-10 14:30:00"
@@ -372,7 +372,7 @@ const Settings = () => {
     {
       id: 2,
       name: "Sarah Johnson",
-      email: "sarah.johnson@aulendur.com",
+      email: "sarah.johnson@lgcustom.com",
       role: "Analyst",
       status: "active",
       lastLogin: "2024-09-10 13:45:00"
@@ -380,7 +380,7 @@ const Settings = () => {
     {
       id: 3,
       name: "Mike Wilson",
-      email: "mike.wilson@aulendur.com",
+      email: "mike.wilson@lgcustom.com",
       role: "Operator",
       status: "inactive",
       lastLogin: "2024-09-08 16:20:00"
@@ -418,7 +418,7 @@ const Settings = () => {
         </TabsList>
 
         <TabsContent value="system" className="space-y-6">
-          <Card className="aulendur-gradient-card">
+          <Card className="lgcustom-gradient-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <SettingsIcon className="h-5 w-5" />
@@ -514,7 +514,7 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="models" className="space-y-6">
-          <Card className="aulendur-gradient-card">
+          <Card className="lgcustom-gradient-card">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -549,7 +549,7 @@ const Settings = () => {
                   {llmProviders.map((provider) => (
                     <Card 
                       key={provider.id} 
-                      className={`aulendur-hover-transform ${
+                      className={`lgcustom-hover-transform ${
                         provider.is_default 
                           ? 'border-2 border-primary shadow-lg bg-primary/5 dark:bg-primary/10' 
                           : ''
@@ -869,7 +869,7 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
-          <Card className="aulendur-gradient-card">
+          <Card className="lgcustom-gradient-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Bell className="h-5 w-5" />
@@ -944,14 +944,14 @@ const Settings = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Notification Email</label>
-                <Input type="email" defaultValue="admin@aulendur.com" />
+                <Input type="email" defaultValue="admin@lgcustom.com" />
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="users" className="space-y-6">
-          <Card className="aulendur-gradient-card">
+          <Card className="lgcustom-gradient-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Users className="h-5 w-5" />
@@ -962,7 +962,7 @@ const Settings = () => {
             <CardContent>
               <div className="space-y-4">
                 {users.map((user) => (
-                  <Card key={user.id} className="aulendur-hover-transform">
+                  <Card key={user.id} className="lgcustom-hover-transform">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
@@ -1001,7 +1001,7 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="security" className="space-y-6">
-          <Card className="aulendur-gradient-card">
+          <Card className="lgcustom-gradient-card">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Shield className="h-5 w-5" />

@@ -79,10 +79,11 @@ class HealthService:
     async def _check_database(self) -> bool:
         """Check database connectivity."""
         try:
-            # Import here to avoid circular imports
-            from sqlalchemy import create_engine, text
+            # Use shared database engine for health checks
+            from app.db.database import get_engine
+            from sqlalchemy import text
             
-            engine = create_engine(settings.DATABASE_URL)
+            engine = get_engine()
             with engine.connect() as conn:
                 result = conn.execute(text("SELECT 1"))
                 return result.scalar() == 1

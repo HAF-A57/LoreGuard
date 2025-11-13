@@ -32,6 +32,7 @@ import { API_URL } from '@/config.js'
 import { toast } from 'sonner'
 import SourceFormModal from './SourceFormModal.jsx'
 import InfoTooltip from './InfoTooltip.jsx'
+import SourceCrawlStatus from './SourceCrawlStatus.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { ArrowUpDown } from 'lucide-react'
 
@@ -351,7 +352,9 @@ const Sources = () => {
       }
 
       const result = await response.json()
-      toast.success(`Crawl triggered successfully. Job ID: ${result.job_id}`)
+      toast.success(`Crawl triggered successfully`, {
+        description: `Job ID: ${result.job_id}. Processing artifacts...`
+      })
       
       // Refresh sources to update last_run
       await fetchSources()
@@ -400,9 +403,9 @@ const Sources = () => {
   const pausedCount = sources.filter(s => s.statusRaw === 'paused').length
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="h-full flex flex-col p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0 mb-4">
         <div>
           <h1 className="text-3xl font-bold">Sources</h1>
           <p className="text-muted-foreground">Manage data sources and monitoring</p>
@@ -416,55 +419,55 @@ const Sources = () => {
       </div>
 
       {/* Status Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="aulendur-hover-transform">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0 mb-4">
+        <Card className="lgcustom-hover-transform py-3 gap-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 px-4 pt-3">
             <CardTitle className="text-sm font-medium">Total Sources</CardTitle>
             <Globe className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pt-0 pb-3">
             <div className="text-2xl font-bold">{sources.length}</div>
             <p className="text-xs text-muted-foreground">Configured sources</p>
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="lgcustom-hover-transform py-3 gap-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 px-4 pt-3">
             <CardTitle className="text-sm font-medium">Active</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pt-0 pb-3">
             <div className="text-2xl font-bold">{activeCount}</div>
             <p className="text-xs text-muted-foreground">Running normally</p>
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="lgcustom-hover-transform py-3 gap-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 px-4 pt-3">
             <CardTitle className="text-sm font-medium">Warnings</CardTitle>
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pt-0 pb-3">
             <div className="text-2xl font-bold">{warningCount}</div>
             <p className="text-xs text-muted-foreground">Need attention</p>
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="lgcustom-hover-transform py-3 gap-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 px-4 pt-3">
             <CardTitle className="text-sm font-medium">Paused</CardTitle>
             <Pause className="h-4 w-4 text-gray-500" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pt-0 pb-3">
             <div className="text-2xl font-bold">{pausedCount}</div>
             <p className="text-xs text-muted-foreground">Temporarily disabled</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Sources List */}
-      <Card className="aulendur-gradient-card">
-        <CardHeader>
+      {/* Sources List - Flex to fill remaining space */}
+      <Card className="lgcustom-gradient-card flex-1 flex flex-col min-h-0">
+        <CardHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Source Management</CardTitle>
@@ -497,7 +500,7 @@ const Sources = () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 flex flex-col min-h-0 p-0">
           {sources.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Globe className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -508,10 +511,10 @@ const Sources = () => {
               </Button>
             </div>
           ) : (
-            <ScrollArea className="h-96">
+            <ScrollArea className="flex-1 min-h-0 px-6 pb-6">
               <div className="space-y-1.5">
                 {sources.map((source) => (
-                <Card key={source.id} className="aulendur-hover-transform py-0">
+                <Card key={source.id} className="lgcustom-hover-transform py-0">
                   <CardContent className="py-1.5 px-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
@@ -522,20 +525,6 @@ const Sources = () => {
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-0">
                             <h3 className="font-semibold">{source.name}</h3>
-                            <Badge 
-                              variant="outline"
-                              className={
-                                source.statusRaw === 'active' 
-                                  ? 'bg-green-500/20 text-green-400 border-green-500/50 font-semibold px-2.5 py-0.5' 
-                                  : source.statusRaw === 'paused'
-                                  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 font-semibold px-2.5 py-0.5'
-                                  : source.status === 'Warning'
-                                  ? 'bg-destructive/20 text-destructive border-destructive/50'
-                                  : 'bg-secondary/20 text-secondary-foreground border-secondary/50'
-                              }
-                            >
-                              {source.status}
-                            </Badge>
                           </div>
                           <div className="text-sm text-muted-foreground space-y-0">
                             <div className="flex items-center space-x-4">
@@ -571,9 +560,30 @@ const Sources = () => {
                               <span>Schedule: {source.scheduleDisplay}</span>
                             </div>
                           </div>
+                          {/* Crawl Status Indicator */}
+                          <SourceCrawlStatus 
+                            sourceId={source.id}
+                            sourceName={source.name}
+                          />
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-col items-end space-y-2">
+                        {/* Status Badge - Above Action Buttons */}
+                        <Badge 
+                          variant="outline"
+                          className={
+                            source.statusRaw === 'active' 
+                              ? 'bg-green-500/20 text-green-400 border-green-500/50 font-semibold px-2.5 py-0.5' 
+                              : source.statusRaw === 'paused'
+                              ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 font-semibold px-2.5 py-0.5'
+                              : source.status === 'Warning'
+                              ? 'bg-destructive/20 text-destructive border-destructive/50'
+                              : 'bg-secondary/20 text-secondary-foreground border-secondary/50'
+                          }
+                        >
+                          {source.status}
+                        </Badge>
+                        <div className="flex items-center space-x-2">
                         {source.statusRaw === 'paused' ? (
                           <Button 
                             variant="outline" 
@@ -609,6 +619,7 @@ const Sources = () => {
                             size="sm"
                             onClick={() => handleTriggerCrawl(source.id)}
                             disabled={triggeringCrawl.has(source.id)}
+                            title="Trigger manual crawl"
                           >
                             {triggeringCrawl.has(source.id) ? (
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -633,6 +644,7 @@ const Sources = () => {
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>

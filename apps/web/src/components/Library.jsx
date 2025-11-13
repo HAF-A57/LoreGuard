@@ -191,7 +191,7 @@ const Library = () => {
             {filteredItems.map((item) => (
               <Card 
                 key={item.id} 
-                className={`aulendur-hover-transform cursor-pointer transition-all ${
+                className={`lgcustom-hover-transform cursor-pointer transition-all ${
                   selectedItems.includes(item.id) ? 'ring-2 ring-primary' : ''
                 }`}
                 onClick={() => toggleSelection(item.id)}

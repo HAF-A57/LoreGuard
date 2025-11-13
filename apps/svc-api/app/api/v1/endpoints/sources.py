@@ -263,6 +263,83 @@ async def trigger_source_crawl(
             detail=f"Unexpected error triggering crawl: {str(e)}"
         )
 
+@router.get("/{source_id}/crawl-status")
+async def get_source_crawl_status(
+    source_id: uuid.UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Get the latest crawl job status for a source
+    
+    Returns the most recent ingest job for this source with real-time status,
+    including progress, timeline, and process information.
+    """
+    from models.job import Job
+    from services.job_monitoring_service import JobMonitoringService
+    
+    # First check if source exists and is not paused
+    source = db.query(Source).filter(Source.id == str(source_id)).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    
+    # Don't show crawl status for paused sources
+    if source.status == "paused":
+        return {
+            "source_id": str(source_id),
+            "has_active_crawl": False,
+            "latest_job": None,
+            "status": "source_paused"
+        }
+    
+    # Get latest ingest job for this source
+    # Query all ingest jobs and filter in Python (SQLAlchemy JSON querying can be tricky)
+    source_id_str = str(source_id)
+    ingest_jobs = (
+        db.query(Job)
+        .filter(Job.type == "ingest")
+        .order_by(Job.created_at.desc())
+        .all()
+    )
+    
+    latest_job = None
+    for job in ingest_jobs:
+        if job.payload and job.payload.get("source_id") == source_id_str:
+            latest_job = job
+            break
+    
+    if not latest_job:
+        return {
+            "source_id": source_id_str,
+            "has_active_crawl": False,
+            "latest_job": None,
+            "status": "no_jobs"
+        }
+    
+    # Get comprehensive job status with monitoring (this will auto-update stale jobs)
+    monitoring_service = JobMonitoringService()
+    job_status = monitoring_service.check_job_status(latest_job, db)
+    
+    # Refresh job from DB in case status was updated
+    db.refresh(latest_job)
+    
+    # Verify the job is actually active (check both DB status and process status)
+    is_actually_running = False
+    if latest_job.status in ["pending", "running"]:
+        # Double-check process is actually running
+        process_running = job_status.get("process_running", False)
+        if latest_job.status == "running" and not process_running:
+            # Process not running but job marked as running - not actually active
+            is_actually_running = False
+        else:
+            is_actually_running = True
+    
+    return {
+        "source_id": source_id_str,
+        "has_active_crawl": is_actually_running,
+        "latest_job": job_status,
+        "status": latest_job.status
+    }
+
 @router.get("/{source_id}/health")
 async def get_source_health(
     source_id: uuid.UUID,

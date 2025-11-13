@@ -79,6 +79,8 @@ class Settings(BaseSettings):
             f"postgresql://loreguard:{os.getenv('POSTGRES_PASSWORD', 'VHR829WfKVoH9LwtNXtc67lRe')}@{os.getenv('LOREGUARD_HOST_IP', 'localhost')}:5432/loreguard"
         )
     )
+    # Database connection pool settings for API service
+    # API service can use slightly larger pools (5-10) since it handles HTTP requests
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
     

@@ -239,7 +239,7 @@ const Dashboard = ({ onNavigateTo }) => {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="aulendur-hover-transform">
+        <Card className="lgcustom-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Artifacts</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
@@ -252,7 +252,7 @@ const Dashboard = ({ onNavigateTo }) => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
+        <Card className="lgcustom-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Signal Artifacts</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
@@ -265,7 +265,7 @@ const Dashboard = ({ onNavigateTo }) => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
+        <Card className="lgcustom-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Sources</CardTitle>
             <Globe className="h-4 w-4 text-muted-foreground" />
@@ -278,7 +278,7 @@ const Dashboard = ({ onNavigateTo }) => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform">
+        <Card className="lgcustom-hover-transform">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Evaluation Accuracy</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
@@ -289,7 +289,7 @@ const Dashboard = ({ onNavigateTo }) => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform relative">
+        <Card className="lgcustom-hover-transform relative">
           <span className="placeholder-card-indicator">⭐</span>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Processing Speed</CardTitle>
@@ -303,7 +303,7 @@ const Dashboard = ({ onNavigateTo }) => {
           </CardContent>
         </Card>
 
-        <Card className="aulendur-hover-transform relative">
+        <Card className="lgcustom-hover-transform relative">
           <span className="placeholder-card-indicator">⭐</span>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">System Load</CardTitle>
@@ -320,7 +320,7 @@ const Dashboard = ({ onNavigateTo }) => {
       {/* Recent Activity and Source Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <Card className="aulendur-gradient-card">
+        <Card className="lgcustom-gradient-card">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Clock className="h-5 w-5" />
@@ -344,7 +344,7 @@ const Dashboard = ({ onNavigateTo }) => {
                   return (
                     <Card
                       key={artifact.id}
-                      className="cursor-pointer aulendur-hover-transform transition-all gap-0 py-0"
+                      className="cursor-pointer lgcustom-hover-transform transition-all gap-0 py-0"
                     >
                       <CardHeader className="pb-2 px-3 pt-2.5">
                         <div className="flex items-start justify-between gap-2">
@@ -457,7 +457,7 @@ const Dashboard = ({ onNavigateTo }) => {
         </Card>
 
         {/* Source Status */}
-        <Card className="aulendur-gradient-card">
+        <Card className="lgcustom-gradient-card">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Globe className="h-5 w-5" />

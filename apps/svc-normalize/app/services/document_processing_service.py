@@ -14,10 +14,9 @@ from datetime import datetime
 
 import boto3
 from botocore.exceptions import ClientError
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
+from app.db.database import get_session
 from app.services.document_parser import DocumentParserService
 from app.services.metadata_extractor import MetadataExtractorService
 
@@ -41,7 +40,7 @@ class DocumentProcessingService:
             region_name=settings.S3_REGION
         )
         
-        # Setup database connection (for accessing svc-api models)
+        # Setup database access (for accessing svc-api models)
         self._setup_database_access()
     
     def _setup_database_access(self):
@@ -53,9 +52,20 @@ class DocumentProcessingService:
         if str(svc_api_app_path) not in sys.path:
             sys.path.insert(0, str(svc_api_app_path))
         
-        # Create database engine
-        self.engine = create_engine(settings.DATABASE_URL)
-        self.Session = sessionmaker(bind=self.engine)
+        # Use shared database engine (singleton pattern)
+        # No need to create engine here - use get_session() which uses shared engine
+        logger.debug("Using shared database engine for document processing")
+    
+    def cleanup(self):
+        """
+        Cleanup database connections.
+        
+        Note: With shared engine pattern, we don't dispose the engine here.
+        The engine persists for the lifetime of the worker process and is reused.
+        This method is kept for API compatibility but does nothing.
+        """
+        # No-op: Engine is shared and persists for worker lifetime
+        logger.debug("Cleanup called (shared engine persists)")
     
     async def process_artifact(
         self,
@@ -76,7 +86,8 @@ class DocumentProcessingService:
             ValueError: If artifact not found or invalid
             RuntimeError: If processing fails
         """
-        session = self.Session()
+        # Use shared database engine via get_session()
+        session = get_session()
         
         try:
             # Import models (available via sys.path modification)

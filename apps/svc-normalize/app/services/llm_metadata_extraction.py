@@ -28,11 +28,11 @@ class LLMMetadataExtractionService:
         if str(svc_api_app_path) not in sys.path:
             sys.path.insert(0, str(svc_api_app_path))
         
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-        
-        self.engine = create_engine(settings.DATABASE_URL)
-        self.Session = sessionmaker(bind=self.engine)
+        # Use shared database engine (singleton pattern)
+        # Import here to avoid circular imports
+        from app.db.database import get_session
+        # Store reference to get_session function instead of creating engine
+        self.get_session = get_session
     
     async def extract_metadata_llm(
         self,
@@ -51,7 +51,8 @@ class LLMMetadataExtractionService:
         Returns:
             Dictionary with extracted metadata, or None if LLM extraction fails
         """
-        session = self.Session()
+        # Use shared database engine via get_session()
+        session = self.get_session()
         
         try:
             from models.llm_provider import LLMProvider
@@ -220,34 +221,34 @@ class LLMMetadataExtractionService:
             message = result["choices"][0]["message"]
             
             try:
-            if "tool_calls" in message and message["tool_calls"]:
-                tool_call = message["tool_calls"][0]
+                if "tool_calls" in message and message["tool_calls"]:
+                    tool_call = message["tool_calls"][0]
                     arguments_str = tool_call["function"]["arguments"]
                     # Handle both string and dict arguments
                     if isinstance(arguments_str, dict):
                         metadata = arguments_str
                     else:
                         metadata = json.loads(arguments_str)
-            elif "function_call" in message:
+                elif "function_call" in message:
                     arguments_str = message["function_call"]["arguments"]
                     if isinstance(arguments_str, dict):
                         metadata = arguments_str
                     else:
                         metadata = json.loads(arguments_str)
-            else:
-                # Try to parse content as JSON
-                content = message.get("content", "")
-                try:
-                    metadata = json.loads(content)
-                except json.JSONDecodeError:
-                    # Try to extract JSON from text
-                    import re
-                    json_match = re.search(r'\{.*\}', content, re.DOTALL)
-                    if json_match:
-                        metadata = json.loads(json_match.group())
-                    else:
-                        raise RuntimeError(f"Could not parse OpenAI response as JSON: {content[:200]}")
-            
+                else:
+                    # Try to parse content as JSON
+                    content = message.get("content", "")
+                    try:
+                        metadata = json.loads(content)
+                    except json.JSONDecodeError:
+                        # Try to extract JSON from text
+                        import re
+                        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                        if json_match:
+                            metadata = json.loads(json_match.group())
+                        else:
+                            raise RuntimeError(f"Could not parse OpenAI response as JSON: {content[:200]}")
+                
                 # Validate metadata structure
                 if not isinstance(metadata, dict):
                     raise ValueError(f"Expected dict but got {type(metadata)}: {metadata}")

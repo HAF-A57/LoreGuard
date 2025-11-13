@@ -129,9 +129,16 @@ class Settings(BaseSettings):
     )
     
     # Database connection pool
-    DB_POOL_SIZE: int = Field(default=10, env="DB_POOL_SIZE")
-    DB_MAX_OVERFLOW: int = Field(default=20, env="DB_MAX_OVERFLOW")
+    # Reduced pool sizes for worker processes (3-5 connections per worker)
+    # With 4 concurrent workers, this gives us 12-20 connections max
+    DB_POOL_SIZE: int = Field(default=3, env="DB_POOL_SIZE")
+    DB_MAX_OVERFLOW: int = Field(default=5, env="DB_MAX_OVERFLOW")
     DB_POOL_TIMEOUT: int = Field(default=30, env="DB_POOL_TIMEOUT")
+    
+    # Alias for compatibility with API service database.py
+    # Note: These are overridden by the shared engine module which uses smaller pools
+    DATABASE_POOL_SIZE: int = Field(default=3, env="DATABASE_POOL_SIZE")
+    DATABASE_MAX_OVERFLOW: int = Field(default=5, env="DATABASE_MAX_OVERFLOW")
     
     # =============================================================================
     # REDIS CONFIGURATION

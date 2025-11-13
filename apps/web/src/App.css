@@ -42,11 +42,11 @@
   --color-sidebar-ring: var(--sidebar-ring);
   
   /* LoreGuard Color Scheme */
-  --aulendur-cream: #FFFEFB;
-  --aulendur-sage: #7B949C;
-  --aulendur-steel: #5C798B;
-  --aulendur-navy: #213C4E;
-  --aulendur-midnight: #182241;
+  --lgcustom-cream: #FFFEFB;
+  --lgcustom-sage: #7B949C;
+  --lgcustom-steel: #5C798B;
+  --lgcustom-navy: #213C4E;
+  --lgcustom-midnight: #182241;
 }
 
 :root {
@@ -141,31 +141,31 @@
 }
 
 /* Custom gradient backgrounds for LoreGuard aesthetic */
-.aulendur-gradient-header {
+.lgcustom-gradient-header {
   background: linear-gradient(135deg, #213C4E 0%, #5C798B 50%, #7B949C 100%);
 }
 
-.aulendur-gradient-card {
+.lgcustom-gradient-card {
   background: linear-gradient(135deg, #FFFEFB 0%, rgba(123, 148, 156, 0.05) 100%);
   border: 1px solid;
   border-image: linear-gradient(135deg, #7B949C, #5C798B) 1;
 }
 
-.dark .aulendur-gradient-card {
+.dark .lgcustom-gradient-card {
   background: linear-gradient(135deg, #213C4E 0%, rgba(92, 121, 139, 0.1) 100%);
 }
 
 /* Hover transformations */
-.aulendur-hover-transform {
+.lgcustom-hover-transform {
   transition: all 0.3s ease;
 }
 
-.aulendur-hover-transform:hover {
+.lgcustom-hover-transform:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(33, 60, 78, 0.15);
 }
 
-.dark .aulendur-hover-transform:hover {
+.dark .lgcustom-hover-transform:hover {
   box-shadow: 0 8px 25px rgba(123, 148, 156, 0.2);
 }
 
@@ -435,4 +435,153 @@ aside[class*="w-80"] [data-slot="badge"] {
   animation: glow-pulse 2s ease-in-out infinite;
   text-shadow: 0 0 8px rgba(168, 85, 247, 0.8), 0 0 12px rgba(168, 85, 247, 0.6);
   z-index: 10;
+}
+
+/* Custom Scrollbar Styling - Matches LoreGuard Theme */
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  background-clip: padding-box;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--sidebar-border);
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--sidebar-accent);
+  background-clip: padding-box;
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.dark * {
+  scrollbar-color: var(--sidebar-border) transparent;
+}
+
+/* Main content area scrollbar - slightly more prominent */
+main::-webkit-scrollbar {
+  width: 12px;
+}
+
+main::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+  border: 3px solid var(--background);
+  background-clip: padding-box;
+}
+
+main::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  background-clip: padding-box;
+}
+
+.dark main::-webkit-scrollbar-thumb {
+  background: var(--sidebar-border);
+  border-color: var(--background);
+  background-clip: padding-box;
+}
+
+.dark main::-webkit-scrollbar-thumb:hover {
+  background: var(--sidebar-accent);
+  background-clip: padding-box;
+}
+
+/* Sidebar navigation scrollbar */
+aside nav::-webkit-scrollbar {
+  width: 8px;
+}
+
+aside nav::-webkit-scrollbar-thumb {
+  background: var(--sidebar-border);
+  border-radius: 4px;
+  border: 2px solid var(--sidebar);
+  background-clip: padding-box;
+}
+
+aside nav::-webkit-scrollbar-thumb:hover {
+  background: var(--sidebar-accent);
+  background-clip: padding-box;
+}
+
+.dark aside nav::-webkit-scrollbar-thumb {
+  background: var(--sidebar-border);
+  border-color: var(--sidebar);
+  background-clip: padding-box;
+}
+
+.dark aside nav::-webkit-scrollbar-thumb:hover {
+  background: var(--sidebar-primary);
+  background-clip: padding-box;
+}
+
+/* Dropdown menus and popovers scrollbar */
+[data-slot="select-content"]::-webkit-scrollbar,
+[data-slot="dropdown-menu-content"]::-webkit-scrollbar,
+[data-slot="context-menu-content"]::-webkit-scrollbar,
+[data-slot="popover-content"]::-webkit-scrollbar,
+[data-slot="command-list"]::-webkit-scrollbar {
+  width: 8px;
+}
+
+[data-slot="select-content"]::-webkit-scrollbar-thumb,
+[data-slot="dropdown-menu-content"]::-webkit-scrollbar-thumb,
+[data-slot="context-menu-content"]::-webkit-scrollbar-thumb,
+[data-slot="popover-content"]::-webkit-scrollbar-thumb,
+[data-slot="command-list"]::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+  border: 2px solid var(--popover);
+  background-clip: padding-box;
+}
+
+[data-slot="select-content"]::-webkit-scrollbar-thumb:hover,
+[data-slot="dropdown-menu-content"]::-webkit-scrollbar-thumb:hover,
+[data-slot="context-menu-content"]::-webkit-scrollbar-thumb:hover,
+[data-slot="popover-content"]::-webkit-scrollbar-thumb:hover,
+[data-slot="command-list"]::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  background-clip: padding-box;
+}
+
+.dark [data-slot="select-content"]::-webkit-scrollbar-thumb,
+.dark [data-slot="dropdown-menu-content"]::-webkit-scrollbar-thumb,
+.dark [data-slot="context-menu-content"]::-webkit-scrollbar-thumb,
+.dark [data-slot="popover-content"]::-webkit-scrollbar-thumb,
+.dark [data-slot="command-list"]::-webkit-scrollbar-thumb {
+  background: var(--sidebar-border);
+  border-color: var(--popover);
+  background-clip: padding-box;
+}
+
+.dark [data-slot="select-content"]::-webkit-scrollbar-thumb:hover,
+.dark [data-slot="dropdown-menu-content"]::-webkit-scrollbar-thumb:hover,
+.dark [data-slot="context-menu-content"]::-webkit-scrollbar-thumb:hover,
+.dark [data-slot="popover-content"]::-webkit-scrollbar-thumb:hover,
+.dark [data-slot="command-list"]::-webkit-scrollbar-thumb:hover {
+  background: var(--sidebar-accent);
+  background-clip: padding-box;
 }

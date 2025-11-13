@@ -260,7 +260,15 @@ class DatabaseStoragePipeline:
     def open_spider(self, spider):
         """Initialize database connection."""
         try:
-            self.engine = create_engine(self.database_url)
+            # Use connection pool settings to prevent exhaustion
+            # Ingestion service can use moderate pool sizes (5-10)
+            self.engine = create_engine(
+                self.database_url,
+                pool_size=5,
+                max_overflow=10,
+                pool_pre_ping=True,
+                pool_recycle=3600
+            )
             self.Session = sessionmaker(bind=self.engine)
             logger.info("Database connection established")
         except Exception as e:
@@ -268,7 +276,97 @@ class DatabaseStoragePipeline:
             raise
     
     def close_spider(self, spider):
-        """Close database connection and log statistics."""
+        """Close database connection, update job status, and log statistics."""
+        # Update job status when spider closes
+        job_id = getattr(spider, 'crawl_job_id', None)
+        if job_id:
+            try:
+                session = self.Session()
+                try:
+                    import sys
+                    import pathlib
+                    apps_dir = pathlib.Path(__file__).resolve().parent.parent.parent
+                    svc_api_app_path = apps_dir / 'svc-api' / 'app'
+                    if str(svc_api_app_path) not in sys.path:
+                        sys.path.insert(0, str(svc_api_app_path))
+                    from models.job import Job
+                    
+                    job = session.query(Job).filter(Job.id == job_id).first()
+                    if job:
+                        # Get spider stats
+                        stats = spider.crawler.stats.get_stats()
+                        items_scraped = stats.get('item_scraped_count', 0)
+                        items_dropped = stats.get('item_dropped_count', 0)
+                        errors = stats.get('log_count/ERROR', 0)
+                        
+                        # Get detected blockers from spider
+                        detected_blockers = getattr(spider, 'detected_blockers', [])
+                        
+                        # Determine final status
+                        if errors > 0 and items_scraped == 0:
+                            final_status = "failed"
+                            error_msg = f"Spider closed with {errors} errors and no items scraped"
+                        elif errors > 0:
+                            final_status = "completed"  # Completed with errors
+                            error_msg = f"Spider completed with {errors} errors"
+                        else:
+                            final_status = "completed"
+                            error_msg = None
+                        
+                        # Update job
+                        job.status = final_status
+                        if error_msg:
+                            job.error = error_msg
+                        
+                        # Update payload with final stats and blocker info
+                        if job.payload:
+                            job.payload["items_processed"] = items_scraped
+                            job.payload["items_dropped"] = items_dropped
+                            job.payload["errors"] = errors
+                            job.payload["progress"] = 100 if final_status == "completed" else 0
+                            
+                            # Store blocker information
+                            if detected_blockers:
+                                job.payload["blocker_info"] = detected_blockers
+                                job.payload["blockers_detected"] = len(detected_blockers)
+                                
+                                # Count blockers by type
+                                blocker_counts = {}
+                                for blocker in detected_blockers:
+                                    blocker_type = blocker.get("type", "unknown")
+                                    blocker_counts[blocker_type] = blocker_counts.get(blocker_type, 0) + 1
+                                job.payload["blocker_counts"] = blocker_counts
+                        else:
+                            job.payload = {
+                                "items_processed": items_scraped,
+                                "items_dropped": items_dropped,
+                                "errors": errors,
+                                "progress": 100 if final_status == "completed" else 0
+                            }
+                            if detected_blockers:
+                                job.payload["blocker_info"] = detected_blockers
+                                job.payload["blockers_detected"] = len(detected_blockers)
+                        
+                        timeline_message = f"Spider closed. Scraped: {items_scraped}, Dropped: {items_dropped}, Errors: {errors}"
+                        if detected_blockers:
+                            timeline_message += f". Blockers detected: {len(detected_blockers)}"
+                        
+                        job.add_timeline_entry(final_status, timeline_message)
+                        
+                        session.commit()
+                        logger.info(f"Updated job {job_id} status to {final_status}")
+                        if detected_blockers:
+                            logger.warning(f"Job {job_id} had {len(detected_blockers)} blockers detected")
+                    else:
+                        logger.warning(f"Job {job_id} not found in database")
+                except Exception as e:
+                    session.rollback()
+                    logger.error(f"Failed to update job status: {e}", exc_info=True)
+                finally:
+                    session.close()
+            except Exception as e:
+                logger.error(f"Error updating job status: {e}", exc_info=True)
+        
         if self.engine:
             self.engine.dispose()
         
@@ -432,7 +530,14 @@ class DatabaseStoragePipeline:
                 logger.warning("DATABASE_URL not configured, cannot find artifact for normalization")
                 return
             
-            engine = create_engine(database_url)
+            # Use connection pool settings
+            engine = create_engine(
+                database_url,
+                pool_size=3,
+                max_overflow=5,
+                pool_pre_ping=True,
+                pool_recycle=3600
+            )
             Session = sessionmaker(bind=engine)
             session = Session()
             
@@ -447,6 +552,7 @@ class DatabaseStoragePipeline:
                     logger.warning(f"Artifact not found for content_hash {content_hash[:8]}...")
             finally:
                 session.close()
+                engine.dispose()  # Dispose temporary engine
                 
         except Exception as e:
             # Don't fail the pipeline if normalization trigger fails
@@ -663,7 +769,14 @@ class ObjectStoragePipeline:
                 logger.error(f"[NORMALIZATION_TRIGGER] DATABASE_URL not configured, cannot find artifact for normalization (content_hash: {content_hash[:8]}...)")
                 return
             
-            engine = create_engine(database_url)
+            # Use connection pool settings
+            engine = create_engine(
+                database_url,
+                pool_size=3,
+                max_overflow=5,
+                pool_pre_ping=True,
+                pool_recycle=3600
+            )
             Session = sessionmaker(bind=engine)
             session = Session()
             
@@ -692,6 +805,7 @@ class ObjectStoragePipeline:
                         logger.error(f"[NORMALIZATION_TRIGGER] Artifact not found for content_hash {content_hash[:8]}... after {max_retries} attempts - giving up")
             finally:
                 session.close()
+                engine.dispose()  # Dispose temporary engine
                 
         except Exception as e:
             # Log error with full traceback for debugging

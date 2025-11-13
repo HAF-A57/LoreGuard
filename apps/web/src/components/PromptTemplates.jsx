@@ -26,6 +26,7 @@ import {
 import { API_URL } from '@/config.js'
 import { toast } from 'sonner'
 import InfoTooltip from './InfoTooltip.jsx'
+import PromptTemplateSection from './prompts/PromptTemplateSection.jsx'
 
 const PromptTemplates = () => {
   const [templates, setTemplates] = useState([])
@@ -54,6 +55,20 @@ const PromptTemplates = () => {
 
   useEffect(() => {
     fetchTemplates()
+  }, [])
+
+  // Listen for external add template trigger (from Evaluations component)
+  useEffect(() => {
+    const handleAddTemplateEvent = () => {
+      handleAddTemplate()
+    }
+    
+    window.addEventListener('promptTemplates:addTemplate', handleAddTemplateEvent)
+    
+    return () => {
+      window.removeEventListener('promptTemplates:addTemplate', handleAddTemplateEvent)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchTemplates = async () => {
@@ -357,8 +372,9 @@ const PromptTemplates = () => {
   const filteredTemplates = templates
 
   return (
-    <div className="space-y-6">
-      <Card className="aulendur-gradient-card">
+    <div className="h-full flex flex-col pt-2 px-6 pb-6 min-w-0 overflow-hidden">
+      {/* Header */}
+      <Card className="lgcustom-gradient-card flex-shrink-0 mb-4">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -368,114 +384,66 @@ const PromptTemplates = () => {
               </CardTitle>
               <CardDescription>Manage LLM prompt templates for metadata extraction, evaluation, and clarification</CardDescription>
             </div>
-            <Button onClick={handleAddTemplate} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Template
-            </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Loading templates...</span>
-            </div>
-          ) : filteredTemplates.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">No prompt templates configured</p>
-              <Button onClick={handleAddTemplate} variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Template
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredTemplates.map((template) => (
-                <Card 
-                  key={template.id} 
-                  className={`aulendur-hover-transform ${
-                    template.is_default 
-                      ? 'border-2 border-primary shadow-lg bg-primary/5 dark:bg-primary/10' 
-                      : ''
-                  }`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2 flex-wrap gap-2">
-                          <span className="font-medium">{template.name}</span>
-                          <Badge className={getTypeColor(template.type)}>
-                            {template.type}
-                          </Badge>
-                          {template.is_default && (
-                            <Badge variant="default" className="font-semibold">Default</Badge>
-                          )}
-                          {template.is_active ? (
-                            <Badge variant="default" className="bg-green-500">Active</Badge>
-                          ) : (
-                            <Badge variant="secondary">Inactive</Badge>
-                          )}
-                          <Badge variant="outline">v{template.version}</Badge>
-                        </div>
-                        <div className="text-sm text-muted-foreground mb-2">
-                          Reference ID: <code className="text-xs bg-muted px-1 py-0.5 rounded">{template.reference_id}</code>
-                        </div>
-                        {template.description && (
-                          <p className="text-sm text-muted-foreground mb-2">{template.description}</p>
-                        )}
-                        <div className="flex items-center space-x-4 text-xs text-muted-foreground">
-                          <span>Used {template.usage_count || 0} times</span>
-                          <span>•</span>
-                          <span>Created {new Date(template.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleTestTemplate(template)}
-                          title="Test Template"
-                        >
-                          <Play className="h-4 w-4" />
-                        </Button>
-                        {templates.filter(t => t.type === template.type && t.id !== template.id).length > 0 && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleCompareTemplates(template)}
-                            title="Compare Versions"
-                          >
-                            <GitCompare className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleEditTemplate(template)}
-                          title="Edit Template"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        {!template.is_default && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleDeleteTemplate(template.id)}
-                            className="text-red-500 hover:text-red-700"
-                            title="Delete Template"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
       </Card>
+
+      {/* Three Column Layout - Extraction, Clarification, Evaluation */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12 flex-1">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading templates...</span>
+        </div>
+      ) : filteredTemplates.length === 0 ? (
+        <Card className="flex-1 flex items-center justify-center">
+          <CardContent className="text-center py-12">
+            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <p className="text-muted-foreground mb-4">No prompt templates configured</p>
+            <Button onClick={handleAddTemplate} variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Your First Template
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="flex-1 flex gap-4 min-h-0 min-w-0 overflow-hidden">
+          {/* Extraction Section */}
+          <PromptTemplateSection
+            type="metadata"
+            templates={filteredTemplates}
+            loading={loading}
+            onTest={handleTestTemplate}
+            onEdit={handleEditTemplate}
+            onDelete={(template) => handleDeleteTemplate(template.id)}
+            onCompare={handleCompareTemplates}
+            allTemplates={templates}
+          />
+
+          {/* Clarification Section */}
+          <PromptTemplateSection
+            type="clarification"
+            templates={filteredTemplates}
+            loading={loading}
+            onTest={handleTestTemplate}
+            onEdit={handleEditTemplate}
+            onDelete={(template) => handleDeleteTemplate(template.id)}
+            onCompare={handleCompareTemplates}
+            allTemplates={templates}
+          />
+
+          {/* Evaluation Section */}
+          <PromptTemplateSection
+            type="evaluation"
+            templates={filteredTemplates}
+            loading={loading}
+            onTest={handleTestTemplate}
+            onEdit={handleEditTemplate}
+            onDelete={(template) => handleDeleteTemplate(template.id)}
+            onCompare={handleCompareTemplates}
+            allTemplates={templates}
+          />
+        </div>
+      )}
 
       {/* Add/Edit Template Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

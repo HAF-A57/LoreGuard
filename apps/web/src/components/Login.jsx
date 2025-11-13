@@ -47,19 +47,19 @@ const Login = ({ onLogin }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-aulendur-cream via-aulendur-sage to-aulendur-steel flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-lgcustom-cream via-lgcustom-sage to-lgcustom-steel flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-aulendur-navy rounded-xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-lgcustom-navy rounded-xl flex items-center justify-center mx-auto mb-4">
             <Shield className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-aulendur-navy mb-2">LoreGuard</h1>
-          <p className="text-aulendur-steel">Facts & Perspectives Harvesting System</p>
+          <h1 className="text-3xl font-bold text-lgcustom-navy mb-2">LoreGuard</h1>
+          <p className="text-lgcustom-steel">Facts & Perspectives Harvesting System</p>
         </div>
 
         {/* Login Card */}
-        <Card className="aulendur-gradient-card shadow-2xl">
+        <Card className="lgcustom-gradient-card shadow-2xl">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Welcome Back</CardTitle>
             <CardDescription>Sign in to access your LoreGuard dashboard</CardDescription>
@@ -126,7 +126,7 @@ const Login = ({ onLogin }) => {
 
               <Button 
                 type="submit" 
-                className="w-full aulendur-hover-transform"
+                className="w-full lgcustom-hover-transform"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -156,7 +156,7 @@ const Login = ({ onLogin }) => {
         </Card>
 
         {/* Footer */}
-        <div className="text-center mt-8 text-sm text-aulendur-steel">
+        <div className="text-center mt-8 text-sm text-lgcustom-steel">
           <div className="flex items-center justify-center space-x-2 mb-2">
             <CheckCircle className="h-4 w-4" />
             <span>Secure Authentication</span>

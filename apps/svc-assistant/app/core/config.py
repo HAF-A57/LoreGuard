@@ -73,8 +73,9 @@ class Settings(BaseSettings):
         return f"postgresql://loreguard:{self.POSTGRES_PASSWORD}@{self.LOREGUARD_HOST_IP}:5432/loreguard"
     
     # Database connection pool
-    DB_POOL_SIZE: int = Field(default=10, env="DB_POOL_SIZE")
-    DB_MAX_OVERFLOW: int = Field(default=20, env="DB_MAX_OVERFLOW")
+    # Reduced pool sizes for assistant service (3-5 connections)
+    DB_POOL_SIZE: int = Field(default=3, env="DB_POOL_SIZE")
+    DB_MAX_OVERFLOW: int = Field(default=5, env="DB_MAX_OVERFLOW")
     
     # =============================================================================
     # REDIS CONFIGURATION

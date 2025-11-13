@@ -115,10 +115,11 @@ from app.core.config import settings
 
 
 # Create engine for assistant service using assistant's config
+# Reduced pool sizes for assistant service (3-5 connections)
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=settings.DB_POOL_SIZE,
-    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_size=3,  # Reduced from default 10
+    max_overflow=5,  # Reduced from default 20
     pool_pre_ping=True,
     pool_recycle=3600,
     echo=settings.DEBUG,

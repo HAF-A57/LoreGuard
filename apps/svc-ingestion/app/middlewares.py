@@ -151,7 +151,14 @@ class SourceConfigMiddleware:
     """
     
     def __init__(self, database_url: str):
-        self.engine = create_engine(database_url)
+        # Use connection pool settings
+        self.engine = create_engine(
+            database_url,
+            pool_size=3,
+            max_overflow=5,
+            pool_pre_ping=True,
+            pool_recycle=3600
+        )
         self.Session = sessionmaker(bind=self.engine)
         self.source_configs = {}
         
@@ -300,7 +307,25 @@ class CustomRetryMiddleware(RetryMiddleware):
         self.max_retry_times = settings.getint('RETRY_TIMES', 3)
         self.retry_http_codes = set(int(x) for x in settings.getlist('RETRY_HTTP_CODES'))
         self.priority_adjust = settings.getint('RETRY_PRIORITY_ADJUST', -1)
+    
+    def process_response(self, request: Request, response: Response, spider) -> Response:
+        """Process response and check if retry is needed for blocker responses."""
         
+        # Check if this is a blocker response that should be retried
+        if response.status in [403, 429] and response.status in self.retry_http_codes:
+            # Check if blocker detection middleware marked this for retry
+            if request.meta.get('blocker_retry', False):
+                blocker_type = request.meta.get('blocker_detected', 'unknown')
+                retries = request.meta.get('retry_times', 0)
+                
+                if retries < self.max_retry_times:
+                    logger.info(f"[RETRY] Retrying {request.url} due to {blocker_type} (attempt {retries + 1}/{self.max_retry_times})")
+                    from scrapy.exceptions import RetryRequest
+                    raise RetryRequest(f"Blocked by {blocker_type}")
+        
+        # Call parent method for standard retry logic
+        return super().process_response(request, response, spider)
+    
     def retry(self, request: Request, reason: str, spider) -> Optional[Request]:
         """Enhanced retry logic with exponential backoff."""
         
@@ -365,6 +390,218 @@ class ResponseValidationMiddleware:
         ]
         
         return any(indicator in body_text for indicator in blocking_indicators)
+
+
+class BlockerDetectionMiddleware:
+    """
+    Middleware to detect and handle common web crawler blockers.
+    Detects 403, 429, Cloudflare challenges, CAPTCHA, and JavaScript requirements.
+    """
+    
+    def __init__(self):
+        self.detected_blockers = []
+    
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls()
+    
+    def process_response(self, request: Request, response: Response, spider) -> Response:
+        """Detect blockers in response and handle based on configuration."""
+        
+        blockers = []
+        compliance_config = getattr(spider, 'compliance_config', {})
+        detect_blockers = compliance_config.get('detect_blockers', True)
+        
+        if not detect_blockers:
+            return response
+        
+        # Detect 403 Forbidden
+        if response.status == 403:
+            blocker = {
+                "type": "403_forbidden",
+                "severity": "high",
+                "message": "Server returned 403 Forbidden",
+                "url": response.url,
+                "timestamp": time.time(),
+                "suggestions": [
+                    "Check User-Agent header",
+                    "Try proxy rotation",
+                    "Verify robots.txt compliance",
+                    "Use headless browser"
+                ]
+            }
+            blockers.append(blocker)
+            logger.warning(f"[BLOCKER] 403 Forbidden detected: {response.url}")
+        
+        # Detect 429 Rate Limiting
+        elif response.status == 429:
+            retry_after = response.headers.get('Retry-After', 'unknown')
+            blocker = {
+                "type": "rate_limit",
+                "severity": "medium",
+                "message": f"Rate limited. Retry after: {retry_after}",
+                "url": response.url,
+                "retry_after": retry_after,
+                "timestamp": time.time(),
+                "suggestions": [
+                    "Reduce request rate",
+                    f"Respect Retry-After header ({retry_after})",
+                    "Use proxy rotation",
+                    "Increase download delay"
+                ]
+            }
+            blockers.append(blocker)
+            logger.warning(f"[BLOCKER] Rate limit detected: {response.url} (Retry-After: {retry_after})")
+        
+        # Detect Cloudflare challenge
+        if self._is_cloudflare_challenge(response):
+            blocker = {
+                "type": "cloudflare_challenge",
+                "severity": "high",
+                "message": "Cloudflare bot protection detected",
+                "url": response.url,
+                "timestamp": time.time(),
+                "suggestions": [
+                    "Use headless browser (Playwright)",
+                    "Solve challenge manually",
+                    "Consider proxy rotation",
+                    "Check if site allows automated access"
+                ]
+            }
+            blockers.append(blocker)
+            logger.warning(f"[BLOCKER] Cloudflare challenge detected: {response.url}")
+        
+        # Detect CAPTCHA
+        if self._is_captcha_page(response):
+            blocker = {
+                "type": "captcha",
+                "severity": "critical",
+                "message": "CAPTCHA challenge detected",
+                "url": response.url,
+                "timestamp": time.time(),
+                "suggestions": [
+                    "Pause crawl and solve manually",
+                    "Use CAPTCHA solving service (may violate ToS)",
+                    "Contact site administrator for API access"
+                ]
+            }
+            blockers.append(blocker)
+            logger.warning(f"[BLOCKER] CAPTCHA detected: {response.url}")
+        
+        # Detect JavaScript requirement (minimal content)
+        if self._requires_javascript(response):
+            blocker = {
+                "type": "javascript_required",
+                "severity": "low",
+                "message": "Page appears to require JavaScript rendering",
+                "url": response.url,
+                "timestamp": time.time(),
+                "suggestions": [
+                    "Enable Playwright/headless browser",
+                    "Check if content loads via AJAX/fetch"
+                ]
+            }
+            blockers.append(blocker)
+            logger.debug(f"[BLOCKER] JavaScript requirement detected: {response.url}")
+        
+        # Handle blockers based on configuration
+        if blockers:
+            self._handle_blockers(request, response, spider, blockers, compliance_config)
+        
+        return response
+    
+    def _is_cloudflare_challenge(self, response: Response) -> bool:
+        """Detect Cloudflare challenge page."""
+        if response.status not in [403, 503, 429]:
+            return False
+        
+        body_text = response.text.lower() if response.text else ""
+        indicators = [
+            'cf-browser-verification',
+            'challenge-platform',
+            'cf-challenge',
+            'checking your browser',
+            'ddos protection by cloudflare',
+            '__cf_bm',
+            'cf-ray',
+            'cloudflare',
+            'just a moment'
+        ]
+        
+        return any(indicator in body_text for indicator in indicators)
+    
+    def _is_captcha_page(self, response: Response) -> bool:
+        """Detect CAPTCHA challenge page."""
+        body_text = response.text.lower() if response.text else ""
+        indicators = [
+            'recaptcha',
+            'hcaptcha',
+            'turnstile',
+            'captcha-container',
+            'g-recaptcha',
+            'h-captcha',
+            'cf-turnstile'
+        ]
+        
+        return any(indicator in body_text for indicator in indicators)
+    
+    def _requires_javascript(self, response: Response) -> bool:
+        """Detect if page requires JavaScript rendering."""
+        if not response.text:
+            return False
+        
+        # Check if response is very small (likely JS-rendered)
+        if len(response.text) < 1000:
+            # Check if it contains script tags but minimal visible content
+            has_scripts = '<script' in response.text.lower()
+            has_minimal_content = len(response.text.strip()) < 500
+            
+            if has_scripts and has_minimal_content:
+                return True
+        
+        return False
+    
+    def _handle_blockers(self, request: Request, response: Response, spider, blockers: list, compliance_config: dict):
+        """Handle detected blockers based on configuration."""
+        
+        for blocker in blockers:
+            blocker_type = blocker["type"]
+            
+            # Get handler strategy for this blocker type
+            handler_key = f"handle_{blocker_type.split('_')[0]}"  # handle_403, handle_429, etc.
+            handler = compliance_config.get(handler_key, compliance_config.get('blocker_response_strategy', 'notify'))
+            
+            # Store blocker info in spider stats and request meta
+            if not hasattr(spider, 'detected_blockers'):
+                spider.detected_blockers = []
+            spider.detected_blockers.append(blocker)
+            
+            # Store in crawler stats
+            spider.crawler.stats.inc_value(f'blockers/{blocker_type}')
+            
+            # Handle based on strategy
+            if handler == "abort":
+                logger.error(f"[BLOCKER] Aborting due to {blocker_type}: {response.url}")
+                raise IgnoreRequest(f"Blocked by {blocker_type}")
+            
+            elif handler == "retry":
+                logger.info(f"[BLOCKER] Will retry after {blocker_type}: {response.url}")
+                # Mark request for retry - store blocker info in request meta
+                # The retry middleware will check this and retry the request
+                request.meta['blocker_detected'] = blocker_type
+                request.meta['blocker_retry'] = True
+                # Don't raise exception here - let the response pass through
+                # The retry middleware will handle it in process_response
+            
+            elif handler == "bypass":
+                logger.info(f"[BLOCKER] Attempting bypass for {blocker_type}: {response.url}")
+                # Bypass logic would be implemented here
+                # For now, just log - full bypass requires Playwright/proxy integration
+            
+            elif handler == "notify" or handler == "pause":
+                logger.warning(f"[BLOCKER] Notifying about {blocker_type}: {response.url}")
+                # Notification handled by BlockerNotificationService
+                # For now, just log - full notification requires database integration
 
 
 class MonitoringMiddleware:

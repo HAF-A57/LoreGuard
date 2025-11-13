@@ -78,8 +78,21 @@ class JobMonitoringService:
             process_info = self._get_process_info(process_id)
             status_info.update(process_info)
             
+            # If job is marked as running but process doesn't exist, update job status
+            if job.status == self.STATUS_RUNNING and not process_info.get("process_running", False):
+                logger.warning(f"Job {job.id} marked as running but process {process_id} not found. Updating status to failed.")
+                job.status = self.STATUS_FAILED
+                job.error = f"Process {process_id} not found - job may have crashed or been killed"
+                job.add_timeline_entry(
+                    self.STATUS_FAILED,
+                    f"Process {process_id} not found - job terminated unexpectedly"
+                )
+                db.commit()
+                status_info["status"] = self.STATUS_FAILED
+                status_info["error"] = job.error
+            
             # Check for hanging/timeout conditions
-            if job.status == self.STATUS_RUNNING:
+            elif job.status == self.STATUS_RUNNING:
                 hanging_check = self._check_hanging_job(job, process_info)
                 if hanging_check["is_hanging"]:
                     status_info["is_hanging"] = True
@@ -93,6 +106,38 @@ class JobMonitoringService:
         else:
             status_info["process_running"] = False
             status_info["process_info"] = None
+            
+            # If job is marked as running/pending but has no process_id, check if it's stale
+            if job.status in [self.STATUS_RUNNING, self.STATUS_PENDING]:
+                if job.created_at:
+                    age_seconds = (datetime.now(timezone.utc) - job.created_at).total_seconds()
+                    
+                    # For running jobs without process_id, mark as failed if older than 1 hour
+                    if job.status == self.STATUS_RUNNING and age_seconds > 3600:  # 1 hour
+                        logger.warning(f"Job {job.id} marked as running but has no process_id and is {age_seconds}s old. Updating status to failed.")
+                        job.status = self.STATUS_FAILED
+                        job.error = "Job marked as running but has no associated process and is stale"
+                        job.add_timeline_entry(
+                            self.STATUS_FAILED,
+                            "Job marked as running but has no process_id and is stale"
+                        )
+                        db.commit()
+                        status_info["status"] = self.STATUS_FAILED
+                        status_info["error"] = job.error
+                    
+                    # For pending jobs without process_id, mark as failed if older than 10 minutes
+                    # (should have started by then)
+                    elif job.status == self.STATUS_PENDING and age_seconds > 600:  # 10 minutes
+                        logger.warning(f"Job {job.id} marked as pending but has no process_id and is {age_seconds}s old. Updating status to failed.")
+                        job.status = self.STATUS_FAILED
+                        job.error = "Job marked as pending but never started - likely failed to initialize"
+                        job.add_timeline_entry(
+                            self.STATUS_FAILED,
+                            "Job marked as pending but never started"
+                        )
+                        db.commit()
+                        status_info["status"] = self.STATUS_FAILED
+                        status_info["error"] = job.error
         
         # Calculate duration
         if job.created_at:

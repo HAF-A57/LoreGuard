@@ -310,7 +310,7 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
           variant="ghost"
           size="sm"
           onClick={onToggleCollapse}
-          className="aulendur-hover-transform text-sidebar-foreground hover:text-sidebar-accent-foreground"
+          className="lgcustom-hover-transform text-sidebar-foreground hover:text-sidebar-accent-foreground"
         >
           <MessageSquare className="h-4 w-4" />
         </Button>
@@ -609,7 +609,7 @@ const AIAssistant = ({ isCollapsed, onToggleCollapse, onClose }) => {
           <Button 
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || isTyping}
-            className="aulendur-hover-transform h-[44px] flex-shrink-0"
+            className="lgcustom-hover-transform h-[44px] flex-shrink-0"
             size="default"
           >
             {isTyping ? (
